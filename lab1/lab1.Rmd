@@ -8,7 +8,7 @@ output: html_document
 ---
 This lab on the Introduction to R comes from "Introduction to Statistical Learning with Applications in R" by Gareth James, Daniela Witten, Trevor Hastie and Robert Tibshirani.
 
-# The tidyverse
+# The `tidyverse`
 
 The textbook was written using `base` `R` functions, which can be unintuitive. For our labs, we will be using the so-called 'tidyverse,' which is based on the idea of tidy data and functions. Tidy data has observations as rows and variables as columns. All the observations must be at the same observational level. Tidy functions are pure, pipeable, and predictable. We'll begin to understand all of this more fully as we start to work with data.
 
