@@ -1,0 +1,448 @@
+This lab on the Introduction to R comes from "Introduction to Statistical Learning with Applications in R" by Gareth James, Daniela Witten, Trevor Hastie and Robert Tibshirani.
+
+# The tidyverse
+
+The textbook was written using `base` `R` functions, which can be unintuitive. For our labs, we will be using the so-called 'tidyverse,' which is based on the idea of tidy data and functions. Tidy data has observations as rows and variables as columns. All the observations must be at the same observational level. Tidy functions are pure, pipeable, and predictable. We'll begin to understand all of this more fully as we start to work with data.
+
+Because the tidyverse is outside the `base` `R` functions, we must use packages (sometimes called libraries) to get the additional functionality. Packages are discussed further in Chapter 3. For now, lets just load a bunch of packages we'll need for our work.
+
+```{r}
+library(ISLR)
+library(dplyr)
+library(readr)
+library(ggplot2)
+library(GGally)
+library(mosaic)
+library(manipulate)
+```
+
+# Loading Data
+
+For most analyses, the first step involves importing a data set into ${\tt R}$. For this class, a lot of the data comes from the package itself, so we can use the ${\tt data()}$ function to import it.
+
+We begin by loading in the ${\tt Auto}$ data set. This data is part of the ${\tt ISLR}$ package.
+
+```{r}
+data(Auto)
+```
+
+Nothing happens when you run this, but now the data is available in your environment. (In RStudio, you would see the name of the data in your Environment tab).
+
+To view the data, we can either print the entire dataset by typing its name, or we can "slice" some of the data off to look at just a subset.
+
+```{r}
+Auto
+Auto %>% 
+    slice(1:10)
+```
+
+If data isn't internal to packages, .csv files are the most common way for data to be formatted. CSV files are simply text files, which you could alternatively open on your computer using a standard text editor. While it is often tempting to view a data set using Excel before loading it into ${\tt R}$, it can introduce problems in the data later. 
+
+We can use the ${\tt read_csv()}$ function in the ${\tt readr}$ package to load in a CSV file. The help file contains details about how to use this function.
+
+Before attempting to load a data set, we must make sure that ${\tt R}$ knows to search for the data in the proper directory. If you are using internal package data, this isn't a concern-- just make sure you have run ${\tt library()}$ on the package containing the data. For external data, the easiest way make sure the data is accessible to R is to put the data in the same folder as your Jupyter notebook. We have a file called ${\tt Auto.csv}$ in this directory, so we can read it in without worrying about the file path. 
+
+When we read in data that is external, we must give it a name. We'll call it `Auto` and use the assignment operator `=`. The assignment operator `<-` is equivalent, and using one or the other is a matter of personal preference. 
+
+```{r}
+Auto=read_csv("Auto.csv", na="?")
+Auto %>% 
+    slice(1:10)
+```
+
+Notice that the data looks just the same as when we loaded it from the package. Now that we have the data, we can begin to learn things about it. 
+
+```{r}
+dim(Auto)
+```
+
+```{r}
+str(Auto)
+```
+
+```{r}
+names(Auto)
+```
+
+The ${\tt dim()}$ function tells us that the data has 392 observations, or rows, and
+nine variables, or columns. The original data had some empty rows, but when we read the data in ${\tt R}$ knew to ignore them. 
+
+The ${\tt str()}$ function tells us that most of the variables are numeric or integer, although the ${\tt name }$ variable is a character vector. 
+
+${\tt names()}$ lets us check the variable names.
+
+# Summary statistics
+
+Often, we want to know some basic things about variables in our data. `summary()` on an entire dataset will give you an idea of some of the distributions of your variables.
+
+The ${\tt summary()}$ function produces a numerical summary of each variable in
+a particular data set.
+
+```{r}
+ summary(Auto)
+```
+
+The summary suggests that `origin` might be better thought of as a factor. It only seems to have three possible values, `1`, `2` and `3`. If we read the documentation about the data (using `?Auto`) we will learn that these numbers correspond to where the car is from: 1. American, 2. European, 3. Japanese. So, lets `mutate()` that variable into a factor (categorical) variable.
+
+```{r}
+Auto = Auto %>%
+    mutate(origin = factor(origin))
+summary(Auto)
+```
+
+We can also look at statistics for a particular variable with the function `favstats()`
+
+```{r}
+favstats(~mpg, data=Auto)
+```
+
+Or, just look at one particular statistic using `mean()`, `sd()`, `median()`, `IQR()`, and more.
+
+```{r}
+mean(~displacement, data=Auto)
+```
+
+# Plotting
+
+We can use the `ggplot2` package to produce simple graphics. `ggplot2` has a particular syntax, which looks like this
+
+```{r}
+ggplot(Auto) + geom_point(aes(x=cylinders, y=mpg))
+```
+
+The basic idea is that you need to initialize a plot with `ggplot()` and then add "geoms" (short for geometric objects) to the plot. The `ggplot2` package is based on the [Grammar of Graphics](https://www.google.com/url?sa=t&rct=j&q=&esrc=s&source=web&cd=1&cad=rja&uact=8&ved=0ahUKEwjV6I6F4ILPAhUFPT4KHTFiBwgQFggcMAA&url=https%3A%2F%2Fwww.amazon.com%2FGrammar-Graphics-Statistics-Computing%2Fdp%2F0387245448&usg=AFQjCNF5D6H3ySCsgqBTdp96KNF3bGyU2Q&sig2=GnNgoN6Ztn3AJSTJYaMPwA), a famous book on data visualization theory. It is a way to map attributes in your data (like variables) to "aesthetics" on the plot. The parameter `aes()` is short for aesthetic. 
+
+For more about the `ggplot2` syntax, view the help by typing `?ggplot` or `?geom_point`. There are also great online resources for `ggplot2`, like the [R graphics cookbook](http://www.cookbook-r.com/Graphs/). 
+
+```{r}
+?ggplot
+```
+
+The ${\tt cylinders}$ variable is stored as a numeric vector, so ${\tt R}$ has treated it
+as quantitative. However, since there are only a small number of possible
+values for cylinders, one may prefer to treat it as a qualitative variable.
+We can turn it into a factor, again using a `mutate()` call. 
+
+```{r}
+Auto = Auto %>%
+    mutate(cylinders = factor(cylinders))
+```
+
+To view the relationship between a categorical and a numeric variable, we might want to produce _boxplots_. As usual, a number of options can be specified in order to customize the plots.
+
+```{r}
+ggplot(Auto) + geom_boxplot(aes(x=cylinders, y=mpg)) + xlab("Cylinders") + ylab("MPG")
+```
+
+The geom `geom_histogram()` can be used to plot a histogram. 
+
+```{r}
+ggplot(Auto) + geom_histogram(aes(x=mpg))
+```
+
+The function warns us that it used a default number of bins, so we should think more carefully about what value makes sense.
+
+```{r}
+ggplot(Auto) + geom_histogram(aes(x=mpg), binwidth=5) 
+```
+
+For small datasets, we might want to see all the bivariate relationships between the variables. The `GGally` package has an extension of the scatterplot matrix that can do just that. (Be patient-- it takes a long time!)
+
+```{r}
+Auto %>% ggpairs()
+```
+
+We can also produce a pairs plot for just a subset of the variables by piping just a selection of the variables into the plot.  
+
+```{r}
+Auto %>% select(mpg, cylinders) %>%
+    ggpairs()
+```
+
+Sometimes, we might want to save a plot for use outside of our Jupyter notebook. To do this, we must use the `ggsave()` function.
+
+```{r}
+ggsave("histogram.jpg",
+       ggplot(Auto) + geom_histogram(aes(x=mpg), binwidth=5) 
+      )
+```
+
+```{r}
+```
+
+```{r}
+```
+
+```{r}
+```
+
+```{r}
+```
+
+```{r}
+```
+
+# Appendices
+
+These sections are not required in order to understand the tidyverse material we are focusing on, but are part of the lab in the book, so we are including them here. The appendices start with making your own vectors and matrices, something which is almost never required in the tidyverse. Then, the appendices move on to more sophisticated plots (such as those in 3 dimensions) and finish up with some introduction to indexing using numbers. With our tidy tools, we will try to avoid indexing using numbers if at all possible, but you may want to look at this material to see another method for slicing data.
+
+# Making vectors and matrices
+
+${\tt R}$ uses functions to perform operations. To run a function called ${\tt funcname}$, we type ${\tt funcname(input1, input2)}$, where the inputs (or arguments) ${\tt input1}$ and ${\tt input2}$ tell ${\tt R}$ how to run the function. A function can have any number of inputs. 
+
+For example, to create a vector of numbers, we use the function
+${\tt c()}$ (for concatenate). Any numbers inside the parentheses are joined together. The following command instructs ${\tt R}$ to join together the numbers 1, 3, 2, and 5, and to save them as a vector named ${\tt x}$. When we type ${\tt x}$, it gives us back the vector.
+
+```{r}
+x <- c(1,3,2,5)
+x
+```
+
+We can also save things using $=$ rather than $<-$:
+
+```{r}
+x = c(1,6,2)
+x
+```
+
+Hitting the up arrow multiple times will display the previous commands,
+which can then be edited. This is useful since one often wishes to repeat
+a similar command. In addition, typing ${\tt ?funcname}$ will always cause ${\tt R}$ to
+open a new help file window with additional information about the function
+${\tt funcname}$.
+
+```{r}
+?c
+```
+
+We can tell ${\tt R}$ to add two sets of numbers together. It will then add the
+first number from ${\tt x}$ to the first number from ${\tt y}$, and so on. To do this, ${\tt x}$ and
+${\tt x}$ should be the same length. We can check the length of each vector using the ${\tt length()}$
+function:
+
+```{r}
+y = c(1,4,3)
+length(x)==length(y)
+```
+
+Looks good, so let's sum them up (I'll print the starting value of the ${\tt x}$ and ${\tt y}$ vectors, too):
+
+```{r}
+#Value of x
+x
+
+#Value of y
+y
+
+#Value of x+y
+x+y
+```
+
+The ${\tt ls()}$ function allows us to look at a list of all of the objects, such as data and functions, that we have saved so far:
+
+```{r}
+ls()
+```
+
+The ${\tt rm()}$ function can be used to delete any that we don’t want:
+
+```{r}
+rm(x)
+ls()
+```
+
+It’s also possible to remove all objects at once (effectively clearing the history):
+
+```{r}
+rm(list=ls())
+```
+
+The ${\tt matrix()}$ function can be used to create a matrix of numbers. Before
+we use the ${\tt matrix()}$ function, we can learn more about it:
+
+```{r}
+?matrix
+```
+
+The help file reveals that the ${\tt matrix()}$ function takes a number of inputs,
+but for now we focus on the first three: the data (the entries in the matrix),
+the number of rows, and the number of columns. First, we create a simple
+matrix.
+
+```{r}
+x=matrix(data=c(1,2,3,4,5,6), ncol=2, nrow=3)
+x
+```
+
+Note that we could just as well omit typing ${\tt data=}$, ${\tt nrow=}$, and ${\tt ncol=}$ in the
+${\tt matrix()}$ command above: that is, we could just type
+
+```{r}
+x=matrix(c(1,2,3,4,5,6),3,2)
+x
+```
+
+and this would have the same effect. However, it can sometimes be useful to
+specify the names of the arguments passed in, since otherwise ${\tt R}$ will assume
+that the function arguments are passed into the function in the same order
+that is given in the function’s help file. As this example illustrates, by
+default ${\tt R}$ creates matrices by successively filling in columns. Alternatively,
+the ${\tt byrow=TRUE}$ option can be used to populate the matrix in order of the
+rows.
+
+```{r}
+matrix(c(1,2,3,4),2,2,byrow=TRUE)
+matrix(c(1,2,3,4),2,2,byrow=FALSE)
+```
+
+(Notice that in the above command we did not assign the matrix to a value
+such as ${\tt x}$. In this case the matrix is printed to the screen but is not saved
+for future calculations.)
+
+The ${\tt sqrt()}$ function returns the square root of each element of a vector or matrix. The command ${\tt x^2}$ raises each element of ${\tt x}$ to the power 2; any powers are possible, including fractional or negative
+powers.
+
+```{r}
+# orginal value of x
+x
+
+# square root
+sqrt(x)
+
+# values squared
+x^2
+```
+
+The ${\tt rnorm()}$ function generates a vector of random normal variables,
+with first argument ${\tt n}$ the sample size. Each time we call this function, we
+will get a different answer. Here we create two correlated sets of numbers,
+${\tt x}$ and ${\tt y}$, and use the ${\tt cor()}$ function to compute the correlation between
+them.
+
+```{r}
+x=rnorm(50)
+y=x+rnorm(50,mean=50,sd=5)
+cor(x,y)
+```
+
+By default, ${\tt rnorm()}$ creates standard normal random variables with a mean
+of 0 and a standard deviation of 1. However, the mean and standard deviation
+can be altered using the ${\tt mean}$ and ${\tt sd}$ arguments, as illustrated above.
+Sometimes we want our code to reproduce the exact same set of random
+numbers; we can use the ${\tt set.seed()}$ function to do this. The ${\tt set.seed()}$
+function takes an (arbitrary) integer argument.
+
+```{r}
+set.seed(13)
+rnorm(50)
+```
+
+We'll use ${\tt set.seed()}$ throughout the labs whenever we perform calculations
+involving random quantities. In general this should allow each of you to reproduce
+the results from the book. Depending on your version of ${\tt R}$ it is possible that some small discrepancies may appear between the book and your output from ${\tt R}$.
+
+The ${\tt mean()}$ and ${\tt var()}$ functions can be used to compute the mean and
+variance of a vector of numbers. Applying ${\tt sqrt()}$ to the output of ${\tt var()}$
+will give the standard deviation. Or we can simply use the ${\tt sd()}$ function.
+
+```{r}
+set.seed(3)
+y=rnorm(100)
+y[0:10]
+
+# Compute the mean
+mean(y)
+
+# Compute the variance
+var(y)
+
+# Standard deviation = square root of variance
+sqrt(var(y))
+
+# But there's a function for that
+sd(y)
+```
+
+# Graphics
+
+We will now create some more sophisticated plots. The ${\tt contour()}$ function produces a contour plot in order to represent three-dimensional data; it is like a topographical map. It takes three arguments:
+
+1. A vector of the ${\tt x}$ values (the first dimension),
+2. A vector of the ${\tt y}$ values (the second dimension), and
+3. A ${\tt matrix}$ whose elements correspond to the ${\tt z}$ value (the third dimension) for each pair of ${\tt (x,y)}$ coordinates.
+
+As with the ${\tt plot()}$ function, there are many other inputs that can be used
+to fine-tune the output of the ${\tt contour()}$ function. To learn more about
+these, take a look at the help file by typing ${\tt ?contour}$.
+
+```{r}
+y=x
+f=outer(x,y,function(x,y)cos(y)/(1+x^2))
+contour(x,y,f)
+contour(x,y,f,nlevels=45,add=T)
+fa=(f-t(f))/2
+contour(x,y,fa,nlevels=15)
+```
+
+The ${\tt image()}$ function works the same way as ${\tt contour()}$, except that it
+produces a color-coded plot whose colors depend on the ${\tt z}$ value. This is known as a heatmap, and is sometimes used to plot temperature in weather
+forecasts. Alternatively, ${\tt persp()}$ can be used to produce a three-dimensional
+plot. The arguments ${\tt theta}$ and ${\tt phi}$ control the angles at which the plot is
+viewed.
+
+```{r}
+image(x,y,fa)
+persp(x,y,fa,theta=30,phi=40)
+```
+
+# Indexing Data
+
+We often wish to examine part of a set of data. Suppose that our data is
+stored in the matrix ${\tt A}$.
+
+```{r}
+A=matrix(1:16,4,4)
+A
+```
+
+Then, typing:
+
+```{r}
+A[2,3]
+```
+
+will select the element corresponding to the second row and the third column.
+The first number after the open-bracket symbol ${\tt [}$ always refers to
+the row, and the second number always refers to the column. We can also
+select multiple rows and columns at a time, by providing vectors as the
+indices.
+
+```{r}
+A[c(1,3),c(2,4)]
+A[1:3,2:4]
+A[1:2,]
+A[,1:2]
+```
+
+The last two examples include either no index for the columns or no index
+for the rows. These indicate that ${\tt R}$ should include all columns or all rows,
+respectively. ${\tt R}$ treats a single row or column of a matrix as a vector.
+
+```{r}
+A[,1]
+```
+
+The use of a negative sign ${\tt -}$ in the index tells R to keep all rows or columns
+_except_ those indicated in the index.
+
+```{r}
+A[-c(1,3),]
+A[-c(1,3),-c(1,3,4)]
+```
+
+The ${\tt dim()}$ function outputs the dimensions of a matrix, written as the number of rows followed by the number of
+columns.
+
+```{r}
+dim(A)
+```

@@ -1,0 +1,268 @@
+This lab on K-Means and Hierarchical Clustering in R is an adaptation of p. 404-407, 410-413 of "Introduction to
+Statistical Learning with Applications in R" by Gareth James, Daniela Witten, Trevor Hastie and Robert
+Tibshirani. Adapted by R. Jordan Crouser at Smith College for SDS293: Machine Learning (Spring 2016).
+
+# 10.5.1 K-Means Clustering
+The function ${\tt kmeans()}$ performs K-means clustering in R. We begin with
+a simple simulated example in which there truly are two clusters in the
+data: the first 25 observations have a mean shift relative to the next 25
+observations.
+
+```{r}
+set.seed(2)
+x=matrix(rnorm(50*2), ncol=2)
+x[1:25,1]=x[1:25,1]+3
+x[1:25,2]=x[1:25,2]-4
+```
+
+We now perform K-means clustering with ${\tt K = 2}$:
+
+```{r}
+km.out=kmeans(x,2,nstart=20)
+```
+
+The cluster assignments of the 50 observations are contained in
+${\tt km.out$cluster}$:
+
+```{r}
+km.out$cluster
+```
+
+The K-means clustering perfectly separated the observations into two clusters
+even though we did not supply any group information to ${\tt kmeans()}$. We
+can plot the data, with each observation colored according to its cluster
+assignment:
+
+```{r}
+plot(x, col=(km.out$cluster+1), main="K-Means Clustering Results with K=2", xlab="", ylab="", pch=20, cex=2)
+```
+
+Here the observations can be easily plotted because they are two-dimensional.
+If there were more than two variables then we could instead perform PCA
+and plot the first two principal components score vectors.
+
+In this example, we knew that there really were two clusters because
+we generated the data. However, for real data, in general we do not know
+the true number of clusters. We could instead have performed K-means
+clustering on this example with ${\tt K = 3}$. If we do this, K-means clustering will split up the two "real" clusters, since it has no information about them:
+
+```{r}
+set.seed(4)
+km.out=kmeans(x,3,nstart=20)
+km.out
+plot(x, col=(km.out$cluster+1), main="K-Means Clustering Results with K=3", xlab="", ylab="", pch=20, cex=2)
+```
+
+To run the ${\tt kmeans()}$ function in R with multiple initial cluster assignments,
+we use the ${\tt nstart}$ argument. If a value of ${\tt nstart}$ greater than one
+is used, then K-means clustering will be performed using multiple random
+assignments, and the ${\tt kmeans()}$ function will
+report only the best results. Here we compare using ${\tt nstart=1}$:
+
+```{r}
+set.seed(3)
+km.out=kmeans(x,3,nstart=1)
+km.out$tot.withinss
+```
+
+to ${\tt nstart=20}$:
+
+```{r}
+km.out=kmeans(x,3,nstart=20)
+km.out$tot.withinss
+```
+
+Note that ${\tt km.out\$tot.withinss}$ is the total within-cluster sum of squares,
+which we seek to minimize by performing K-means clustering. The individual within-cluster sum-of-squares are contained in the
+vector ${\tt km.out\$withinss}$.
+
+It is generally recommended to always run K-means clustering with a large
+value of ${\tt nstart}$, such as 20 or 50 to avoid getting stuck in an undesirable local
+optimum.
+
+When performing K-means clustering, in addition to using multiple initial
+cluster assignments, it is also important to set a random seed using the
+${\tt set.seed()}$ function. This way, the initial cluster assignments can
+be replicated, and the K-means output will be fully reproducible.
+
+# 10.5.2 Hierarchical Clustering
+The ${\tt hclust()}$ function implements hierarchical clustering in R. In the following example we use the data from the previous section to plot the hierarchical
+clustering dendrogram using complete, single, and average linkage clustering,
+with Euclidean distance as the dissimilarity measure. We begin by
+clustering observations using complete linkage. The ${\tt dist()}$ function is used
+to compute the 50 $\times$ 50 inter-observation Euclidean distance matrix:
+
+```{r}
+hc.complete=hclust(dist(x), method="complete")
+```
+
+We could just as easily perform hierarchical clustering with average or
+single linkage instead:
+
+```{r}
+hc.average=hclust(dist(x), method="average")
+hc.single=hclust(dist(x), method="single")
+```
+
+We can now plot the dendrograms obtained using the usual ${\tt plot()}$ function.
+The numbers at the bottom of the plot identify each observation:
+
+```{r}
+par(mfrow=c(1,3))
+plot(hc.complete,main="Complete Linkage", xlab="", sub="", cex=.9)
+plot(hc.average, main="Average Linkage", xlab="", sub="", cex=.9)
+plot(hc.single, main="Single Linkage", xlab="", sub="", cex=.9)
+```
+
+To determine the cluster labels for each observation associated with a
+given cut of the dendrogram, we can use the ${\tt cutree()}$ function:
+
+```{r}
+cutree(hc.complete, 2)
+cutree(hc.average, 2)
+cutree(hc.single, 2)
+```
+
+For this data, complete and average linkage generally separate the observations
+into their correct groups. However, single linkage identifies one point
+as belonging to its own cluster. A more sensible answer is obtained when
+four clusters are selected, although there are still two singletons:
+
+```{r}
+cutree(hc.single, 4)
+```
+
+To scale the variables before performing hierarchical clustering of the
+observations, we can use the ${\tt scale()}$ function:
+
+```{r}
+xsc=scale(x)
+plot(hclust(dist(xsc), method="complete"), main="Hierarchical Clustering with Scaled Features")
+```
+
+Correlation-based distance can be computed using the ${\tt as.dist()}$ function, which converts an arbitrary square symmetric matrix into a form that
+the ${\tt hclust()}$ function recognizes as a distance matrix. However, this only
+makes sense for data with **at least three features** since the absolute correlation
+between any two observations with measurements on two features is
+always 1. Let's generate and cluster a three-dimensional data set:
+
+```{r}
+x=matrix(rnorm(30*3), ncol=3)
+dd=as.dist(1-cor(t(x)))
+plot(hclust(dd, method="complete"), main="Complete Linkage with Correlation-Based Distance", xlab="", sub="")
+```
+
+# 10.6: NCI60 Data Example
+
+Unsupervised techniques are often used in the analysis of genomic data. In this portion of the lab, we'll see how hierarchical and K-means clustering compare on the ${\tt NCI60}$ cancer cell line microarray data, which
+consists of 6,830 gene expression measurements on 64 cancer cell lines:
+
+```{r}
+# The NCI60 data
+library(ISLR)
+nci.labs=NCI60$labs
+nci.data=NCI60$data
+```
+
+Each cell line is labeled with a cancer type. We'll ignore the
+cancer types in performing clustering, as these are unsupervised
+techniques. After performing clustering, we'll use this column to see the extent to which these cancer types agree with the results of these
+unsupervised techniques.
+
+The data has 64 rows and 6,830 columns.
+
+```{r}
+dim(nci.data)
+```
+
+Let's take a look at the cancer types for the cell lines:
+
+```{r}
+table(nci.labs)
+```
+
+# 10.6.2 Clustering the Observations of the NCI60 Data
+We now proceed to hierarchically cluster the cell lines in the ${\tt NCI60}$ data,
+with the goal of finding out whether or not the observations cluster into
+distinct types of cancer. To begin, we standardize the variables to have
+mean zero and standard deviation one. This step is
+optional, and need only be performed if we want each gene to be on the
+same scale:
+
+```{r}
+sd.data=scale(nci.data)
+```
+
+We now perform hierarchical clustering of the observations using complete,
+single, and average linkage. We'll use standard Euclidean distance as the dissimilarity
+measure:
+
+```{r}
+par(mfrow=c(1,3))
+data.dist=dist(sd.data)
+plot(hclust(data.dist), labels=nci.labs, main="Complete Linkage", xlab="", sub="",ylab="")
+plot(hclust(data.dist, method="average"), labels=nci.labs, main="Average Linkage", xlab="", sub="",ylab="")
+plot(hclust(data.dist, method="single"), labels=nci.labs,  main="Single Linkage", xlab="", sub="",ylab="")
+```
+
+We see that the choice of linkage
+certainly does affect the results obtained. Typically, single linkage will tend
+to yield trailing clusters: very large clusters onto which individual observations
+attach one-by-one. On the other hand, complete and average linkage
+tend to yield more balanced, attractive clusters. For this reason, complete
+and average linkage are generally preferred to single linkage. Clearly cell
+lines within a single cancer type do tend to cluster together, although the
+clustering is not perfect. 
+
+Let's use our complete linkage hierarchical clustering
+for the analysis. We can cut the dendrogram at the height that will yield a particular
+number of clusters, say 4:
+
+```{r}
+hc.out=hclust(dist(sd.data))
+hc.clusters=cutree(hc.out,4)
+table(hc.clusters,nci.labs)
+```
+
+There are some clear patterns. All the leukemia cell lines fall in cluster 3,
+while the breast cancer cell lines are spread out over three different clusters.
+We can plot the cut on the dendrogram that produces these four clusters using the ${\tt abline()}$ function, which draws a straight line on top of any existing plot in R:
+
+```{r}
+par(mfrow=c(1,1))
+plot(hc.out, labels=nci.labs)
+abline(h=139, col="red")
+```
+
+Printing the output of ${\tt hclust}$ gives a useful brief summary of the object:
+
+```{r}
+hc.out
+```
+
+We claimed earlier that K-means clustering and hierarchical
+clustering with the dendrogram cut to obtain the same number
+of clusters can yield **very** different results. How do these ${\tt NCI60}$ hierarchical
+clustering results compare to what we get if we perform K-means clustering
+with ${\tt K = 4}$?
+
+```{r}
+set.seed(2)
+km.out=kmeans(sd.data, 4, nstart=20)
+km.clusters=km.out$cluster
+```
+
+We can use a confusion matrix to compare the differences in how the two methods assigned observations to clusters:
+
+```{r}
+table(km.clusters,hc.clusters)
+```
+
+We see that the four clusters obtained using hierarchical clustering and Kmeans
+clustering are somewhat different. Cluster 2 in K-means clustering is
+identical to cluster 3 in hierarchical clustering. However, the other clusters
+differ: for instance, cluster 4 in K-means clustering contains a portion of
+the observations assigned to cluster 1 by hierarchical clustering, as well as
+all of the observations assigned to cluster 2 by hierarchical clustering.
+
+To get credit for this lab, use a similar analysis to compare the results of your K-means clustering to the results of your hierarchical clustering with single and average linkage. What differences do you notice? Post your response to Piazza: https://piazza.com/class/igwiv4w3ctb6rg?cid=58
