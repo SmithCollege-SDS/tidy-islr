@@ -1,3 +1,11 @@
+```{r, message=FALSE, warning=FALSE, echo=FALSE}
+require(knitr)
+opts_chunk$set(eval=FALSE)
+```
+
+---
+output: html_document
+---
 This lab on the Introduction to R comes from "Introduction to Statistical Learning with Applications in R" by Gareth James, Daniela Witten, Trevor Hastie and Robert Tibshirani.
 
 # The tidyverse
@@ -16,11 +24,13 @@ library(mosaic)
 library(manipulate)
 ```
 
+Getting error messages? You may need to install the packages first using `install.packages()`.
+
 # Loading Data
 
-For most analyses, the first step involves importing a data set into ${\tt R}$. For this class, a lot of the data comes from the package itself, so we can use the ${\tt data()}$ function to import it.
+For most analyses, the first step involves importing a data set into `R`. For this class, a lot of the data comes from the package itself, so we can use the `data()` function to import it.
 
-We begin by loading in the ${\tt Auto}$ data set. This data is part of the ${\tt ISLR}$ package.
+We begin by loading in the `Auto` data set. This data is part of the `ISLR` package.
 
 ```{r}
 data(Auto)
@@ -36,11 +46,11 @@ Auto %>%
     slice(1:10)
 ```
 
-If data isn't internal to packages, .csv files are the most common way for data to be formatted. CSV files are simply text files, which you could alternatively open on your computer using a standard text editor. While it is often tempting to view a data set using Excel before loading it into ${\tt R}$, it can introduce problems in the data later. 
+If data isn't internal to packages, .csv files are the most common way for data to be formatted. CSV files are simply text files, which you could alternatively open on your computer using a standard text editor. While it is often tempting to view a data set using Excel before loading it into `R`, it can introduce problems in the data later. 
 
-We can use the ${\tt read_csv()}$ function in the ${\tt readr}$ package to load in a CSV file. The help file contains details about how to use this function.
+We can use the `read_csv()` function in the `readr` package to load in a CSV file. The help file contains details about how to use this function.
 
-Before attempting to load a data set, we must make sure that ${\tt R}$ knows to search for the data in the proper directory. If you are using internal package data, this isn't a concern-- just make sure you have run ${\tt library()}$ on the package containing the data. For external data, the easiest way make sure the data is accessible to R is to put the data in the same folder as your Jupyter notebook. We have a file called ${\tt Auto.csv}$ in this directory, so we can read it in without worrying about the file path. 
+Before attempting to load a data set, we must make sure that `R` knows to search for the data in the proper directory. If you are using internal package data, this isn't a concern-- just make sure you have run `library()` on the package containing the data. For external data, the easiest way make sure the data is accessible to R is to put the data in the same folder as your Jupyter notebook. We have a file called `Auto.csv` in this directory, so we can read it in without worrying about the file path. 
 
 When we read in data that is external, we must give it a name. We'll call it `Auto` and use the assignment operator `=`. The assignment operator `<-` is equivalent, and using one or the other is a matter of personal preference. 
 
@@ -64,25 +74,30 @@ str(Auto)
 names(Auto)
 ```
 
-The ${\tt dim()}$ function tells us that the data has 392 observations, or rows, and
-nine variables, or columns. The original data had some empty rows, but when we read the data in ${\tt R}$ knew to ignore them. 
+The `dim()` function tells us that the data has 392 observations, or rows, and
+nine variables, or columns. The original data had some empty rows, but when we read the data in `R` knew to ignore them. 
 
-The ${\tt str()}$ function tells us that most of the variables are numeric or integer, although the ${\tt name }$ variable is a character vector. 
+The ` str()` function tells us that most of the variables are numeric or integer, although the ` name ` variable is a character vector. 
 
-${\tt names()}$ lets us check the variable names.
+` names()` lets us check the variable names.
 
 # Summary statistics
 
 Often, we want to know some basic things about variables in our data. `summary()` on an entire dataset will give you an idea of some of the distributions of your variables.
 
-The ${\tt summary()}$ function produces a numerical summary of each variable in
+The ` summary()` function produces a numerical summary of each variable in
 a particular data set.
 
 ```{r}
  summary(Auto)
 ```
 
-The summary suggests that `origin` might be better thought of as a factor. It only seems to have three possible values, `1`, `2` and `3`. If we read the documentation about the data (using `?Auto`) we will learn that these numbers correspond to where the car is from: 1. American, 2. European, 3. Japanese. So, lets `mutate()` that variable into a factor (categorical) variable.
+The summary suggests that `origin` might be better thought of as a factor. It only seems to have three possible values, `1`, `2` and `3`. If we read the documentation about the data (using `?Auto`) we will learn that these numbers correspond to where the car is from: 1. American, 2. European, 3. Japanese. 
+```{r}
+?Auto
+```
+
+So, lets `mutate()` that variable into a factor (categorical) variable.
 
 ```{r}
 Auto = Auto %>%
@@ -118,7 +133,7 @@ For more about the `ggplot2` syntax, view the help by typing `?ggplot` or `?geom
 ?ggplot
 ```
 
-The ${\tt cylinders}$ variable is stored as a numeric vector, so ${\tt R}$ has treated it
+The ` cylinders` variable is stored as a numeric vector, so `R` has treated it
 as quantitative. However, since there are only a small number of possible
 values for cylinders, one may prefer to treat it as a qualitative variable.
 We can turn it into a factor, again using a `mutate()` call. 
@@ -159,27 +174,12 @@ Auto %>% select(mpg, cylinders) %>%
     ggpairs()
 ```
 
-Sometimes, we might want to save a plot for use outside of our Jupyter notebook. To do this, we must use the `ggsave()` function.
+Sometimes, we might want to save a plot for use outside of R. To do this, we can use the `ggsave()` function.
 
 ```{r}
-ggsave("histogram.jpg",
+ggsave("histogram.png",
        ggplot(Auto) + geom_histogram(aes(x=mpg), binwidth=5) 
       )
-```
-
-```{r}
-```
-
-```{r}
-```
-
-```{r}
-```
-
-```{r}
-```
-
-```{r}
 ```
 
 # Appendices
@@ -188,10 +188,10 @@ These sections are not required in order to understand the tidyverse material we
 
 # Making vectors and matrices
 
-${\tt R}$ uses functions to perform operations. To run a function called ${\tt funcname}$, we type ${\tt funcname(input1, input2)}$, where the inputs (or arguments) ${\tt input1}$ and ${\tt input2}$ tell ${\tt R}$ how to run the function. A function can have any number of inputs. 
+`R` uses functions to perform operations. To run a function called `funcname`, we type `funcname(input1, input2)`, where the inputs (or arguments) `input1` and `input2` tell `R` how to run the function. A function can have any number of inputs. 
 
 For example, to create a vector of numbers, we use the function
-${\tt c()}$ (for concatenate). Any numbers inside the parentheses are joined together. The following command instructs ${\tt R}$ to join together the numbers 1, 3, 2, and 5, and to save them as a vector named ${\tt x}$. When we type ${\tt x}$, it gives us back the vector.
+`c()` (for concatenate). Any numbers inside the parentheses are joined together. The following command instructs `R` to join together the numbers 1, 3, 2, and 5, and to save them as a vector named `x`. When we type `x`, it gives us back the vector.
 
 ```{r}
 x <- c(1,3,2,5)
@@ -207,17 +207,17 @@ x
 
 Hitting the up arrow multiple times will display the previous commands,
 which can then be edited. This is useful since one often wishes to repeat
-a similar command. In addition, typing ${\tt ?funcname}$ will always cause ${\tt R}$ to
+a similar command. In addition, typing `?funcname` will always cause `R` to
 open a new help file window with additional information about the function
-${\tt funcname}$.
+`funcname`.
 
 ```{r}
 ?c
 ```
 
-We can tell ${\tt R}$ to add two sets of numbers together. It will then add the
-first number from ${\tt x}$ to the first number from ${\tt y}$, and so on. To do this, ${\tt x}$ and
-${\tt x}$ should be the same length. We can check the length of each vector using the ${\tt length()}$
+We can tell `R` to add two sets of numbers together. It will then add the
+first number from `x` to the first number from `y`, and so on. To do this, `x` and
+`x` should be the same length. We can check the length of each vector using the `length()`
 function:
 
 ```{r}
@@ -225,7 +225,7 @@ y = c(1,4,3)
 length(x)==length(y)
 ```
 
-Looks good, so let's sum them up (I'll print the starting value of the ${\tt x}$ and ${\tt y}$ vectors, too):
+Looks good, so let's sum them up (I'll print the starting value of the `x` and `y` vectors, too):
 
 ```{r}
 #Value of x
@@ -238,13 +238,13 @@ y
 x+y
 ```
 
-The ${\tt ls()}$ function allows us to look at a list of all of the objects, such as data and functions, that we have saved so far:
+The `ls()` function allows us to look at a list of all of the objects, such as data and functions, that we have saved so far:
 
 ```{r}
 ls()
 ```
 
-The ${\tt rm()}$ function can be used to delete any that we don’t want:
+The `rm()` function can be used to delete any that we don’t want:
 
 ```{r}
 rm(x)
@@ -257,14 +257,14 @@ It’s also possible to remove all objects at once (effectively clearing the his
 rm(list=ls())
 ```
 
-The ${\tt matrix()}$ function can be used to create a matrix of numbers. Before
-we use the ${\tt matrix()}$ function, we can learn more about it:
+The `matrix()` function can be used to create a matrix of numbers. Before
+we use the `matrix()` function, we can learn more about it:
 
 ```{r}
 ?matrix
 ```
 
-The help file reveals that the ${\tt matrix()}$ function takes a number of inputs,
+The help file reveals that the `matrix()` function takes a number of inputs,
 but for now we focus on the first three: the data (the entries in the matrix),
 the number of rows, and the number of columns. First, we create a simple
 matrix.
@@ -274,8 +274,8 @@ x=matrix(data=c(1,2,3,4,5,6), ncol=2, nrow=3)
 x
 ```
 
-Note that we could just as well omit typing ${\tt data=}$, ${\tt nrow=}$, and ${\tt ncol=}$ in the
-${\tt matrix()}$ command above: that is, we could just type
+Note that we could just as well omit typing `data=`, `nrow=`, and `ncol=` in the
+`matrix()` command above: that is, we could just type
 
 ```{r}
 x=matrix(c(1,2,3,4,5,6),3,2)
@@ -283,11 +283,11 @@ x
 ```
 
 and this would have the same effect. However, it can sometimes be useful to
-specify the names of the arguments passed in, since otherwise ${\tt R}$ will assume
+specify the names of the arguments passed in, since otherwise `R` will assume
 that the function arguments are passed into the function in the same order
 that is given in the function’s help file. As this example illustrates, by
-default ${\tt R}$ creates matrices by successively filling in columns. Alternatively,
-the ${\tt byrow=TRUE}$ option can be used to populate the matrix in order of the
+default `R` creates matrices by successively filling in columns. Alternatively,
+the `byrow=TRUE` option can be used to populate the matrix in order of the
 rows.
 
 ```{r}
@@ -296,10 +296,10 @@ matrix(c(1,2,3,4),2,2,byrow=FALSE)
 ```
 
 (Notice that in the above command we did not assign the matrix to a value
-such as ${\tt x}$. In this case the matrix is printed to the screen but is not saved
+such as `x`. In this case the matrix is printed to the screen but is not saved
 for future calculations.)
 
-The ${\tt sqrt()}$ function returns the square root of each element of a vector or matrix. The command ${\tt x^2}$ raises each element of ${\tt x}$ to the power 2; any powers are possible, including fractional or negative
+The `sqrt()` function returns the square root of each element of a vector or matrix. The command `x^2` raises each element of `x` to the power 2; any powers are possible, including fractional or negative
 powers.
 
 ```{r}
@@ -313,10 +313,10 @@ sqrt(x)
 x^2
 ```
 
-The ${\tt rnorm()}$ function generates a vector of random normal variables,
-with first argument ${\tt n}$ the sample size. Each time we call this function, we
+The `rnorm()` function generates a vector of random normal variables,
+with first argument `n` the sample size. Each time we call this function, we
 will get a different answer. Here we create two correlated sets of numbers,
-${\tt x}$ and ${\tt y}$, and use the ${\tt cor()}$ function to compute the correlation between
+`x` and `y`, and use the `cor()` function to compute the correlation between
 them.
 
 ```{r}
@@ -325,11 +325,11 @@ y=x+rnorm(50,mean=50,sd=5)
 cor(x,y)
 ```
 
-By default, ${\tt rnorm()}$ creates standard normal random variables with a mean
+By default, `rnorm()` creates standard normal random variables with a mean
 of 0 and a standard deviation of 1. However, the mean and standard deviation
-can be altered using the ${\tt mean}$ and ${\tt sd}$ arguments, as illustrated above.
+can be altered using the `mean` and `sd` arguments, as illustrated above.
 Sometimes we want our code to reproduce the exact same set of random
-numbers; we can use the ${\tt set.seed()}$ function to do this. The ${\tt set.seed()}$
+numbers; we can use the `set.seed()` function to do this. The `set.seed()`
 function takes an (arbitrary) integer argument.
 
 ```{r}
@@ -337,13 +337,13 @@ set.seed(13)
 rnorm(50)
 ```
 
-We'll use ${\tt set.seed()}$ throughout the labs whenever we perform calculations
+We'll use `set.seed()` throughout the labs whenever we perform calculations
 involving random quantities. In general this should allow each of you to reproduce
-the results from the book. Depending on your version of ${\tt R}$ it is possible that some small discrepancies may appear between the book and your output from ${\tt R}$.
+the results from the book. Depending on your version of `R` it is possible that some small discrepancies may appear between the book and your output from `R`.
 
-The ${\tt mean()}$ and ${\tt var()}$ functions can be used to compute the mean and
-variance of a vector of numbers. Applying ${\tt sqrt()}$ to the output of ${\tt var()}$
-will give the standard deviation. Or we can simply use the ${\tt sd()}$ function.
+The `mean()` and `var()` functions can be used to compute the mean and
+variance of a vector of numbers. Applying `sqrt()` to the output of `var()`
+will give the standard deviation. Or we can simply use the `sd()` function.
 
 ```{r}
 set.seed(3)
@@ -365,15 +365,15 @@ sd(y)
 
 # Graphics
 
-We will now create some more sophisticated plots. The ${\tt contour()}$ function produces a contour plot in order to represent three-dimensional data; it is like a topographical map. It takes three arguments:
+We will now create some more sophisticated plots. The `contour()` function produces a contour plot in order to represent three-dimensional data; it is like a topographical map. It takes three arguments:
 
-1. A vector of the ${\tt x}$ values (the first dimension),
-2. A vector of the ${\tt y}$ values (the second dimension), and
-3. A ${\tt matrix}$ whose elements correspond to the ${\tt z}$ value (the third dimension) for each pair of ${\tt (x,y)}$ coordinates.
+1. A vector of the `x` values (the first dimension),
+2. A vector of the `y` values (the second dimension), and
+3. A `matrix` whose elements correspond to the `z` value (the third dimension) for each pair of `(x,y)` coordinates.
 
-As with the ${\tt plot()}$ function, there are many other inputs that can be used
-to fine-tune the output of the ${\tt contour()}$ function. To learn more about
-these, take a look at the help file by typing ${\tt ?contour}$.
+As with the `plot()` function, there are many other inputs that can be used
+to fine-tune the output of the `contour()` function. To learn more about
+these, take a look at the help file by typing `?contour`.
 
 ```{r}
 y=x
@@ -384,10 +384,10 @@ fa=(f-t(f))/2
 contour(x,y,fa,nlevels=15)
 ```
 
-The ${\tt image()}$ function works the same way as ${\tt contour()}$, except that it
-produces a color-coded plot whose colors depend on the ${\tt z}$ value. This is known as a heatmap, and is sometimes used to plot temperature in weather
-forecasts. Alternatively, ${\tt persp()}$ can be used to produce a three-dimensional
-plot. The arguments ${\tt theta}$ and ${\tt phi}$ control the angles at which the plot is
+The `image()` function works the same way as `contour()`, except that it
+produces a color-coded plot whose colors depend on the `z` value. This is known as a heatmap, and is sometimes used to plot temperature in weather
+forecasts. Alternatively, `persp()` can be used to produce a three-dimensional
+plot. The arguments `theta` and `phi` control the angles at which the plot is
 viewed.
 
 ```{r}
@@ -398,7 +398,7 @@ persp(x,y,fa,theta=30,phi=40)
 # Indexing Data
 
 We often wish to examine part of a set of data. Suppose that our data is
-stored in the matrix ${\tt A}$.
+stored in the matrix `A`.
 
 ```{r}
 A=matrix(1:16,4,4)
@@ -412,7 +412,7 @@ A[2,3]
 ```
 
 will select the element corresponding to the second row and the third column.
-The first number after the open-bracket symbol ${\tt [}$ always refers to
+The first number after the open-bracket symbol `[` always refers to
 the row, and the second number always refers to the column. We can also
 select multiple rows and columns at a time, by providing vectors as the
 indices.
@@ -425,14 +425,14 @@ A[,1:2]
 ```
 
 The last two examples include either no index for the columns or no index
-for the rows. These indicate that ${\tt R}$ should include all columns or all rows,
-respectively. ${\tt R}$ treats a single row or column of a matrix as a vector.
+for the rows. These indicate that `R` should include all columns or all rows,
+respectively. `R` treats a single row or column of a matrix as a vector.
 
 ```{r}
 A[,1]
 ```
 
-The use of a negative sign ${\tt -}$ in the index tells R to keep all rows or columns
+The use of a negative sign `-` in the index tells R to keep all rows or columns
 _except_ those indicated in the index.
 
 ```{r}
@@ -440,7 +440,7 @@ A[-c(1,3),]
 A[-c(1,3),-c(1,3,4)]
 ```
 
-The ${\tt dim()}$ function outputs the dimensions of a matrix, written as the number of rows followed by the number of
+The `dim()` function outputs the dimensions of a matrix, written as the number of rows followed by the number of
 columns.
 
 ```{r}
