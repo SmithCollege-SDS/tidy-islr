@@ -6,7 +6,7 @@ opts_chunk$set(eval=FALSE)
 ---
 output: html_document
 ---
-This lab on the Introduction to R comes from "Introduction to Statistical Learning with Applications in R" by Gareth James, Daniela Witten, Trevor Hastie and Robert Tibshirani.
+This lab on the Introduction to R comes from "Introduction to Statistical Learning with Applications in R" by Gareth James, Daniela Witten, Trevor Hastie and Robert Tibshirani. It was re-implemented in Fall 2016 in `tidyverse` format by Amelia McNamara and R. Jordan Crouser at Smith College.
 
 # The `tidyverse`
 
@@ -38,7 +38,7 @@ data(Auto)
 
 Nothing happens when you run this, but now the data is available in your environment. (In RStudio, you would see the name of the data in your Environment tab).
 
-To view the data, we can either print the entire dataset by typing its name, or we can "slice" some of the data off to look at just a subset.
+To view the data, we can either print the entire dataset by typing its name, or we can "slice" some of the data off to look at just a subset by piping data using the `%>%` operator into the `slice` function:
 
 ```{r}
 Auto
