@@ -164,7 +164,9 @@ ggplot(Auto) + geom_histogram(aes(x=mpg), binwidth=5)
 For small datasets, we might want to see all the bivariate relationships between the variables. The `GGally` package has an extension of the scatterplot matrix that can do just that. (Be patient-- it takes a long time!)
 
 ```{r}
-Auto %>% ggpairs()
+Auto %>% 
+  select(-name) %>%
+  ggpairs()
 ```
 
 We can also produce a pairs plot for just a subset of the variables by piping just a selection of the variables into the plot.  
