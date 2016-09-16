@@ -89,7 +89,7 @@ are correctly predicted. Of course, it may be that $K = 1$ results in an
 overly flexible fit to the data. Below, we repeat the analysis using $K = 3$.
 
 ```{r}
-knn_pred3 = knn(train_X, test_X, train_Direction, k=3)
+knn_pred3 = knn(train_Market, test_Market, train_Direction, k=3)
 table(knn_pred3, test_Direction)
 mean(knn_pred3==test_Direction)
 ```

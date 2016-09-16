@@ -170,7 +170,7 @@ table(knn_pred, test_Direction)</code></pre>
 <pre class="r"><code>mean(knn_pred==test_Direction)</code></pre>
 <pre><code>## [1] 0.5</code></pre>
 <p>The results using <span class="math inline">\(K = 1\)</span> are not very good, since only 50% of the observations are correctly predicted. Of course, it may be that <span class="math inline">\(K = 1\)</span> results in an overly flexible fit to the data. Below, we repeat the analysis using <span class="math inline">\(K = 3\)</span>.</p>
-<pre class="r"><code>knn_pred3 = knn(train_X, test_X, train_Direction, k=3)
+<pre class="r"><code>knn_pred3 = knn(train_Market, test_Market, train_Direction, k=3)
 table(knn_pred3, test_Direction)</code></pre>
 <pre><code>##          test_Direction
 ## knn_pred3 Down Up
