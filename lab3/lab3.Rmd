@@ -1,21 +1,26 @@
 This lab on K-Nearest Neighbors in R comes from p. 163-167 of "Introduction to Statistical Learning with Applications in R" by Gareth James, Daniela Witten, Trevor Hastie and Robert Tibshirani
 
-# 4.6.5: K-Nearest Neighbors
-
-In this lab, we will perform KNN on the ${\tt Smarket}$ dataset from ${\tt ISLR}$. This data set consists of percentage returns for the S&P 500 stock index over 1,250 days, from the
-beginning of 2001 until the end of 2005. For each date, we have recorded
-the percentage returns for each of the five previous trading days, ${\tt Lag1}$
-through ${\tt Lag5}$. We have also recorded ${\tt Volume}$ (the number of shares traded on the previous day, in billions), ${\tt Today}$ (the percentage return on the date
-in question) and ${\tt Direction}$ (whether the market was ${\tt Up}$ or ${\tt Down}$ on this
-date). We can use the ${\tt head(...)}$ function to look at the first few rows:
-
-```{r}
-library(ISLR)
-head(Smarket)
+```{r, message=FALSE, warning=FALSE, echo=FALSE}
+require(knitr)
+opts_chunk$set(eval=TRUE, message=FALSE, cache=TRUE)
 ```
 
-Today we're going to try to predict ${\tt Direction}$ using percentage returns from the previous two days (${\tt Lag1}$ and ${\tt Lag2}$). We'll build our model using the ${\tt knn()}$ function, which is part of the
-${\tt class}$ library:
+# 4.6.5: K-Nearest Neighbors
+
+In this lab, we will perform KNN on the `Smarket` dataset from ` ISLR`. This data set consists of percentage returns for the S&P 500 stock index over 1,250 days, from the
+beginning of 2001 until the end of 2005. For each date, we have recorded
+the percentage returns for each of the five previous trading days, `Lag1` through `Lag5`. We have also recorded `Volume` (the number of shares traded on the previous day, in billions), `Today` (the percentage return on the date in question) and `Direction` (whether the market was `Up` or `Down` on this date). We can use the `slice()` function to look at the first few rows:
+
+```{r, message=FALSE}
+library(ISLR)
+library(dplyr)
+library(mosaic)
+data(Smarket)
+Smarket %>% slice(1:10)
+```
+
+Today we're going to try to predict ` Direction` using percentage returns from the previous two days (` Lag1` and ` Lag2`). We'll build our model using the ` knn()` function, which is part of the
+` class` library:
 
 ```{r}
 library(class)
@@ -24,75 +29,59 @@ library(class)
 This function works rather differently from the other model-fitting
 functions that we have encountered thus far. Rather than a two-step
 approach in which we first fit the model and then we use the model to make
-predictions, ${\tt knn()}$ forms predictions using a single command. The function
+predictions, `knn()` forms predictions using a single command. The function
 requires four inputs.
-   1. A matrix containing the predictors associated with the training data,
-labeled ${\tt train.X}$ below.
-   2. A matrix containing the predictors associated with the data for which
-we wish to make predictions, labeled ${\tt test.X}$ below.
-   3. A vector containing the class labels for the training observations,
-labeled ${\tt train.Direction}$ below.
-   4. A value for $K$, the number of nearest neighbors to be used by the
-classifier.
+   1. Training data (just the predictors). We'll call this ` train_Market`.
+   2. Testing data (just the predictors). We'll call this ` test_Market`.
+   3. Training data (our outcome variable, which is class labels in this case). We'll call this ` train_Direction`.
+   4. A value for $K$, the number of nearest neighbors to be used by the classifier.
 
-We'll first create a vector corresponding to the observations from 2001 through 2004, which we'll use to train the model. We will then use this vector to create a held out data set of observations from 2005 on which we will test.
+We'll first create two subsets of our data-- one containing the observations from 2001 through 2004, which we'll use to train the model and one with observations from 2005 on, for testing. To do this, we'll use the `dplyr` `filter()` command. 
 
 ```{r}
-train=(Smarket$Year<2005)
+train = Smarket %>%
+  filter(Year < 2005)
+test = Smarket %>%
+  filter(Year >= 2005)
 ```
 
-The object ${\tt train}$ is a vector of 1,250 elements, corresponding to the observations
-in our data set. The elements of the vector that correspond to
-observations that occurred before 2005 are set to ${\tt TRUE}$, whereas those that
-correspond to observations in 2005 are set to ${\tt FALSE}$. 
 
-The object train is a **Boolean vector**, since its elements are ${\tt TRUE}$ and ${\tt FALSE}$. Boolean vectors can be used to obtain a subset of the rows or columns of a matrix. For
-instance, the command ${\tt Smarket[train,]}$ would pick out a submatrix of the
-stock market data set, corresponding only to the dates before 2005, since
-those are the ones for which the elements of train are ${\tt TRUE}$:
+For the model, we need small datasets for `train_Market` and `test_Market` that only contain the predictors we want to use. Since we're interested in `Lag1` and `Lag2`, we need to pull those out. We can do this using `select()`. 
 
 ```{r}
-head(Smarket[train,])
+train_Market = train %>%
+  select(Lag1, Lag2)
+test_Market = test %>%
+  select(Lag1, Lag2)
 ```
 
-The ${\tt !}$ symbol
-can be used to reverse all of the elements of a Boolean vector. That is,
-${\tt !train}$ is a vector similar to ${\tt train}$, except that the elements that are ${\tt TRUE}$
-in train get swapped to ${\tt FALSE}$ in ${\tt !train}$, and the elements that are ${\tt FALSE}$
-in train get swapped to ${\tt TRUE}$ in ${\tt !train}$. Therefore, ${\tt Smarket[!train,]}$ yields
-a submatrix of the stock market data containing only the observations for
-which train is ${\tt FALSE}$—that is, the observations with dates in 2005. The
-output below indicates that there are 252 such observations:
+Because of the way the `knn()` function is written, we need to provide the class labels as a vector, which requires an additional step to the pipeline. By adding `.$Direction` to the end of our `dplyr` chain, we're indicating that we want to turn the result of our `select()` (which is a dataframe, as `dplyr` makes all its outputs) into a vector. 
 
 ```{r}
-dim(Smarket[!train,])
+train_Direction = train %>%
+  select(Direction) %>%
+  .$Direction 
 ```
 
-Now we'll use the ${\tt cbind()}$ function, short for column bind, to bind the ${\tt Lag1}$ and ${\tt Lag2}$ variables together into two matrices, one for the training set and the
-other for the test set. We'll also pull out our training labels.
-
-```{r}
-train.X=cbind(Smarket$Lag1,Smarket$Lag2)[train,]
-test.X=cbind(Smarket$Lag1,Smarket$Lag2)[!train,]
-train.Direction=Smarket$Direction[train]
-```
-
-Now the ${\tt knn()}$ function can be used to predict the market’s movement for
-the dates in 2005. We set a **random seed** before we apply ${\tt knn()}$ because
-if several observations are tied as nearest neighbors, then ${\tt R}$ will randomly
+Now the `knn()` function can be used to predict the market’s movement for
+the dates in 2005. We set a **random seed** before we apply `knn()` because
+if several observations are tied as nearest neighbors, then `R` will randomly
 break the tie. Therefore, a seed must be set in order to ensure reproducibility
-of results.
+of results. You can put in your favorite number here, or leave it as 1. 
 
 ```{r}
 set.seed(1)
-knn.pred=knn(train.X,test.X,train.Direction,k=1)
+knn_pred = knn(train_Market, test_Market, train_Direction, k=1)
 ```
 
-The ${\tt table()}$ function can be used to produce a **confusion matrix** in order to determine how many observations were correctly or incorrectly classified.
+The `table()` function can be used to produce a **confusion matrix** in order to determine how many observations were correctly or incorrectly classified.
 
 ```{r}
-table(knn.pred,Smarket$Direction[!train])
-mean(knn.pred==Smarket$Direction[!train])
+test_Direction = test %>%
+  select(Direction) %>%
+  .$Direction
+table(knn_pred, test_Direction)
+mean(knn_pred==test_Direction)
 ```
 
 The results using $K = 1$ are not very good, since only 50% of the observations
@@ -100,98 +89,107 @@ are correctly predicted. Of course, it may be that $K = 1$ results in an
 overly flexible fit to the data. Below, we repeat the analysis using $K = 3$.
 
 ```{r}
-knn.pred=knn(train.X,test.X,train.Direction,k=3)
-table(knn.pred,Smarket$Direction[!train])
-mean(knn.pred==Smarket$Direction[!train])
+knn_pred3 = knn(train_X, test_X, train_Direction, k=3)
+table(knn_pred3, test_Direction)
+mean(knn_pred3==test_Direction)
 ```
 
 The results have improved slightly. Let's try a few other $K$ values to see if we get any further improvement:
 
 ```{r}
+# There must be a way to do this in a tidy/broom format but I haven't figured it out yet. 
 for (k_val in 1:10) {
-    set.seed(1)
-    # Your code here
+  set.seed(1)
+  # Your code here
 }
+
 ```
 
-It looks like for classifying this dataset, ${KNN}$ might not be the right approach.
+It looks like for classifying this dataset, KNN might not be the right approach.
 
 # 4.6.6: An Application to Caravan Insurance Data
-Let's see how the ${\tt KNN}$ approach performs on the ${\tt Caravan}$ data set, which is
-part of the ${\tt ISLR}$ library. This data set includes 85 predictors that measure demographic characteristics for 5,822 individuals. The response variable is
-${\tt Purchase}$, which indicates whether or not a given individual purchases a
+Let's see how the `KNN` approach performs on the `Caravan` data set, which is
+part of the `ISLR` package. This data set includes 85 predictors that measure demographic characteristics for 5,822 individuals. The response variable is `Purchase`, which indicates whether or not a given individual purchases a
 caravan insurance policy. In this data set, only 6% of people purchased
 caravan insurance.
 
 ```{r}
-summary(Caravan$Purchase)
+tally(~Purchase, data=Caravan, format = "percent")
 ```
 
-Because the ${\tt KNN}$ classifier predicts the class of a given test observation by
+Because the `KNN` classifier predicts the class of a given test observation by
 identifying the observations that are nearest to it, the scale of the variables
 matters. Any variables that are on a large scale will have a much larger
-effect on the distance between the observations, and hence on the ${\tt KNN}$
+effect on the distance between the observations, and hence on the `KNN`
 classifier, than variables that are on a small scale. 
 
 For instance, imagine a
 data set that contains two variables, salary and age (measured in dollars
-and years, respectively). As far as ${\tt KNN}$ is concerned, a difference of \$1,000
+and years, respectively). As far as `KNN` is concerned, a difference of \$1,000
 in salary is enormous compared to a difference of 50 years in age. Consequently,
-salary will drive the ${\tt KNN}$ classification results, and age will have
+salary will drive the `KNN` classification results, and age will have
 almost no effect. 
 
 This is contrary to our intuition that a salary difference
 of \$1,000 is quite small compared to an age difference of 50 years. Furthermore,
-the importance of scale to the ${\tt KNN}$ classifier leads to another issue:
+the importance of scale to the `KNN` classifier leads to another issue:
 if we measured salary in Japanese yen, or if we measured age in minutes,
 then we’d get quite different classification results from what we get if these
 two variables are measured in dollars and years.
 
 A good way to handle this problem is to **standardize** the data so that all
 variables are given a mean of zero and a standard deviation of one. Then
-all variables will be on a comparable scale. The ${\tt scale()}$ function does just
-this. In standardizing the data, we exclude column 86, because that is the
-qualitative ${\tt Purchase}$ variable.
+all variables will be on a comparable scale. The `scale()` function does just
+this. In standardizing the data, we exclude the qualitative `Purchase` variable.
 
 ```{r}
-standardized.X=scale(Caravan[,-86])
-var(Caravan[,1])
-var(Caravan[,2])
-var(standardized.X[,1])
-var(standardized.X[,2])
+standardized_Caravan = Caravan %>%
+  select(-Purchase) %>%
+  scale() %>%
+  data.frame() # This is an artifact of using the base scale() function. There must be a tidyier way!
+
+var(~MOSTYPE, data=Caravan)
+var(~MAANTHUI, data=Caravan)
+
+var(~MOSTYPE, data=standardized_Caravan)
+var(~MAANTHUI, data=standardized_Caravan)
 ```
 
-Now every column of ${\tt standardized.X}$ has a standard deviation of one and
+Now every column of `standardized_Caravan` has a standard deviation of one and
 a mean of zero.
 
 We'll now split the observations into a test set, containing the first 1,000
 observations, and a training set, containing the remaining observations.
 
 ```{r}
-test=1:1000
-train2.X=standardized.X[-test,]
-test2.X=standardized.X[test,]
-train2.Y=Caravan$Purchase[-test]
-test2.Y=Caravan$Purchase[test]
+test_Caravan = standardized_Caravan %>%
+  slice(1:1000)
+train_Caravan = standardized_Caravan %>%
+  slice(1001:5822)
+
+Purchase = Caravan %>%
+  select(Purchase)
+
+test_Purchase = Purchase %>%
+  slice(1:1000) %>%
+  .$Purchase
+
+train_Purchase = Purchase %>%
+  slice(1001:5822) %>%
+  .$Purchase
 ```
 
-The vector test is numeric, with values from 1 through 1,000. Typing
-${\tt standardized.X[test,]}$ yields the submatrix of the data containing the observations
-whose indices range from 1 to 1, 000, whereas typing
-${\tt standardized.X[-test,]}$ yields the submatrix containing the observations
-whose indices do **not** range from 1 to 1, 000.
-
-Let's fit a ${\tt KNN}$ model on the training data using $K = 1$, and evaluate its
+Let's fit a `KNN` model on the training data using $K = 1$, and evaluate its
 performance on the test data.
 
 ```{r}
 set.seed(1)
-knn.pred=knn(train2.X,test2.X,train2.Y,k=1)
-mean(test2.Y!=knn.pred) # KNN error rate
-mean(test2.Y!="No")     # Percent of people who purchase insurance
+knn_pred = knn(train_Caravan, test_Caravan, train_Purchase, k=1)
+mean(test_Purchase != knn_pred) # KNN error rate
+mean(test_Purchase != "No")     # Percent of people who purchase insurance
 ```
 
-The KNN error rate on the 1,000 test observations is just under 12%. At first glance, this may appear to be fairly good. However, since only 6% of customers purchased insurance, we could get the error rate down to 6% by always predicting ${\tt No}$ regardless of the values of the predictors!
+The KNN error rate on the 1,000 test observations is just under 12%. At first glance, this may appear to be fairly good. However, since only 6% of customers purchased insurance, we could get the error rate down to 6% by always predicting `No` regardless of the values of the predictors!
 
 Suppose that there is some non-trivial cost to trying to sell insurance
 to a given individual. For instance, perhaps a salesperson must visit each
@@ -204,15 +202,14 @@ to try to sell insurance only to customers who are likely to buy it. So the
 overall error rate is not of interest. Instead, the fraction of individuals that
 are correctly predicted to buy insurance is of interest.
 
-It turns out that ${\tt KNN}$ with $K = 1$ does far better than random guessing
+It turns out that `KNN` with $K = 1$ does far better than random guessing
 among the customers that are predicted to buy insurance:
 
 ```{r}
-table(knn.pred,test2.Y)
+table(knn_pred, test_Purchase)
 ```
 
-Among 77 such
-customers, 9, or 11.7%, actually do purchase insurance. This is double the
+Among 77 such customers, 9, or 11.7%, actually do purchase insurance. This is double the
 rate that one would obtain from random guessing. Let's see if increasing $K$ helps! Try out a few different $K$ values below. Feeling adventurous? Write a function that figures out the best value for $K$.
 
 ```{r}
@@ -220,4 +217,4 @@ set.seed(1)
 # Your code here
 ```
 
-It appears that ${\tt KNN}$ is finding some real patterns in a difficult data set! To get credit for this lab, post a response to the Piazza prompt available at: https://piazza.com/class/igwiv4w3ctb6rg?cid=10
+It appears that `KNN` is finding some real patterns in a difficult data set! To get credit for this lab, post a response to the Piazza prompt available at: https://piazza.com/class/igwiv4w3ctb6rg?cid=10
