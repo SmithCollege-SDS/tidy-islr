@@ -123,7 +123,7 @@ $(document).ready(function () {
 <h1>4.6.5: K-Nearest Neighbors</h1>
 <p>In this lab, we will perform KNN on the <code>Smarket</code> dataset from <code>ISLR</code>. This data set consists of percentage returns for the S&amp;P 500 stock index over 1,250 days, from the beginning of 2001 until the end of 2005. For each date, we have recorded the percentage returns for each of the five previous trading days, <code>Lag1</code> through <code>Lag5</code>. We have also recorded <code>Volume</code> (the number of shares traded on the previous day, in billions), <code>Today</code> (the percentage return on the date in question) and <code>Direction</code> (whether the market was <code>Up</code> or <code>Down</code> on this date). We can use the <code>slice()</code> function to look at the first few rows:</p>
 <pre class="r"><code>library(ISLR)
-library(dplyr)
+library(tidyverse)
 library(mosaic)
 data(Smarket)
 Smarket %&gt;% slice(1:10)</code></pre>
@@ -178,12 +178,24 @@ table(knn_pred3, test_Direction)</code></pre>
 ##      Up     63 87</code></pre>
 <pre class="r"><code>mean(knn_pred3==test_Direction)</code></pre>
 <pre><code>## [1] 0.5357143</code></pre>
-<p>The results have improved slightly. Let’s try a few other <span class="math inline">\(K\)</span> values to see if we get any further improvement:</p>
-<pre class="r"><code># There must be a way to do this in a tidy/broom format but I haven't figured it out yet. 
-for (k_val in 1:10) {
-  set.seed(1)
-  # Your code here
-}</code></pre>
+<p>The results have improved slightly. Let’s try a few other <span class="math inline">\(K\)</span> values to see if we get any further improvement. To do this, we’re going to use a few more of the tidyverse packages, <code>tidyr</code> and <code>purrr</code>. These are automically loaded by the convenience package <code>tidyverse</code>, so we don’t need to load them explicitly. But, it’s still good to know where functions come from so you can search for help effectively!</p>
+<pre class="r"><code>set.seed(1)
+
+predictions = data_frame(k = 1:5) %&gt;%
+  unnest(prediction = map(k, ~ knn(train_Market, test_Market, train_Direction, k = .))) %&gt;%
+  mutate(oracle = rep_along(prediction, test_Direction))
+
+predictions %&gt;%
+  group_by(k) %&gt;%
+  summarize(accuracy = mean(prediction == oracle))</code></pre>
+<pre><code>## # A tibble: 5 × 2
+##       k  accuracy
+##   &lt;int&gt;     &lt;dbl&gt;
+## 1     1 0.5000000
+## 2     2 0.5198413
+## 3     3 0.5317460
+## 4     4 0.5277778
+## 5     5 0.4841270</code></pre>
 <p>It looks like for classifying this dataset, KNN might not be the right approach.</p>
 </div>
 <div id="an-application-to-caravan-insurance-data" class="section level1">
@@ -243,7 +255,7 @@ mean(test_Purchase != knn_pred) # KNN error rate</code></pre>
 ## knn_pred  No Yes
 ##      No  873  50
 ##      Yes  68   9</code></pre>
-<p>Among 77 such customers, 9, or 11.7%, actually do purchase insurance. This is double the rate that one would obtain from random guessing. Let’s see if increasing <span class="math inline">\(K\)</span> helps! Try out a few different <span class="math inline">\(K\)</span> values below. Feeling adventurous? Write a function that figures out the best value for <span class="math inline">\(K\)</span>.</p>
+<p>Among 77 such customers, 9, or 11.7%, actually do purchase insurance. This is double the rate that one would obtain from random guessing. Let’s see if increasing <span class="math inline">\(K\)</span> helps! Try out a few different <span class="math inline">\(K\)</span> values below. Feeling adventurous? Write some code that figures out the best value for <span class="math inline">\(K\)</span>.</p>
 <pre class="r"><code>set.seed(1)
 # Your code here</code></pre>
 <p>It appears that <code>KNN</code> is finding some real patterns in a difficult data set! To get credit for this lab, post a response to the Piazza prompt available at: <a href="https://piazza.com/class/igwiv4w3ctb6rg?cid=10" class="uri">https://piazza.com/class/igwiv4w3ctb6rg?cid=10</a></p>

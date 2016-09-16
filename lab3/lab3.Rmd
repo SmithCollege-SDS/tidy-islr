@@ -7,20 +7,20 @@ opts_chunk$set(eval=TRUE, message=FALSE, cache=TRUE)
 
 # 4.6.5: K-Nearest Neighbors
 
-In this lab, we will perform KNN on the `Smarket` dataset from ` ISLR`. This data set consists of percentage returns for the S&P 500 stock index over 1,250 days, from the
+In this lab, we will perform KNN on the `Smarket` dataset from `ISLR`. This data set consists of percentage returns for the S&P 500 stock index over 1,250 days, from the
 beginning of 2001 until the end of 2005. For each date, we have recorded
 the percentage returns for each of the five previous trading days, `Lag1` through `Lag5`. We have also recorded `Volume` (the number of shares traded on the previous day, in billions), `Today` (the percentage return on the date in question) and `Direction` (whether the market was `Up` or `Down` on this date). We can use the `slice()` function to look at the first few rows:
 
 ```{r, message=FALSE}
 library(ISLR)
-library(dplyr)
+library(tidyverse)
 library(mosaic)
 data(Smarket)
 Smarket %>% slice(1:10)
 ```
 
-Today we're going to try to predict ` Direction` using percentage returns from the previous two days (` Lag1` and ` Lag2`). We'll build our model using the ` knn()` function, which is part of the
-` class` library:
+Today we're going to try to predict ` Direction` using percentage returns from the previous two days (`Lag1` and `Lag2`). We'll build our model using the `knn()` function, which is part of the
+`class` library:
 
 ```{r}
 library(class)
@@ -31,9 +31,9 @@ functions that we have encountered thus far. Rather than a two-step
 approach in which we first fit the model and then we use the model to make
 predictions, `knn()` forms predictions using a single command. The function
 requires four inputs.
-   1. Training data (just the predictors). We'll call this ` train_Market`.
-   2. Testing data (just the predictors). We'll call this ` test_Market`.
-   3. Training data (our outcome variable, which is class labels in this case). We'll call this ` train_Direction`.
+   1. Training data (just the predictors). We'll call this `train_Market`.
+   2. Testing data (just the predictors). We'll call this `test_Market`.
+   3. Training data (our outcome variable, which is class labels in this case). We'll call this `train_Direction`.
    4. A value for $K$, the number of nearest neighbors to be used by the classifier.
 
 We'll first create two subsets of our data-- one containing the observations from 2001 through 2004, which we'll use to train the model and one with observations from 2005 on, for testing. To do this, we'll use the `dplyr` `filter()` command. 
@@ -94,15 +94,18 @@ table(knn_pred3, test_Direction)
 mean(knn_pred3==test_Direction)
 ```
 
-The results have improved slightly. Let's try a few other $K$ values to see if we get any further improvement:
+The results have improved slightly. Let's try a few other $K$ values to see if we get any further improvement. To do this, we're going to use a few more of the tidyverse packages, `tidyr` and `purrr`. These are automically loaded by the convenience package `tidyverse`, so we don't need to load them explicitly. But, it's still good to know where functions come from so you can search for help effectively!
 
 ```{r}
-# There must be a way to do this in a tidy/broom format but I haven't figured it out yet. 
-for (k_val in 1:10) {
-  set.seed(1)
-  # Your code here
-}
+set.seed(1)
 
+predictions = data_frame(k = 1:5) %>%
+  unnest(prediction = map(k, ~ knn(train_Market, test_Market, train_Direction, k = .))) %>%
+  mutate(oracle = rep_along(prediction, test_Direction))
+
+predictions %>%
+  group_by(k) %>%
+  summarize(accuracy = mean(prediction == oracle))
 ```
 
 It looks like for classifying this dataset, KNN might not be the right approach.
@@ -210,7 +213,7 @@ table(knn_pred, test_Purchase)
 ```
 
 Among 77 such customers, 9, or 11.7%, actually do purchase insurance. This is double the
-rate that one would obtain from random guessing. Let's see if increasing $K$ helps! Try out a few different $K$ values below. Feeling adventurous? Write a function that figures out the best value for $K$.
+rate that one would obtain from random guessing. Let's see if increasing $K$ helps! Try out a few different $K$ values below. Feeling adventurous? Write some code that figures out the best value for $K$.
 
 ```{r}
 set.seed(1)
