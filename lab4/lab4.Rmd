@@ -186,4 +186,4 @@ they equal 1.5 and −0.8. We do this using the `predict()` function.
 predict(glm_fit,newdata=data.frame(Lag1=c(1.2,1.5),Lag2=c(1.1,-0.8)),type="response")
 ```
 
-To get credit for this lab, play around with a few other values for `Lag1` and `Lag2`, and then post to Piazza about what you found. If you're feeling adventurous, try fitting models with other subsets of variables to see if you can find a letter one!
+To get credit for this lab, play around with a few other values for `Lag1` and `Lag2`, and then post to Piazza about what you found. If you're feeling adventurous, try fitting models with other subsets of variables to see if you can find a better one!
