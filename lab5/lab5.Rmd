@@ -1,21 +1,33 @@
-This lab on Logistic Regression in R comes from p. 161-163 of "Introduction to Statistical Learning with Applications in R" by Gareth James, Daniela Witten, Trevor Hastie and Robert Tibshirani
+```{r, message=FALSE, warning=FALSE, echo=FALSE}
+require(knitr)
+opts_chunk$set(eval=FALSE)
+```
+
+This lab on Logistic Regression in R comes from p. 161-163 of "Introduction to Statistical Learning with Applications in R" by Gareth James, Daniela Witten, Trevor Hastie and Robert Tibshirani. It was re-implemented in Fall 2016 in `tidyverse` format by Amelia McNamara and R. Jordan Crouser at Smith College.
 
 # 4.6.3 Linear Discriminant Analysis
 
-Now we will perform LDA on the ${\tt Smarket}$ data from the ${\tt ISLR}$ package. In ${\tt R}$, we can fit a LDA model using the ${\tt lda()}$ function, which is part of the ${\tt MASS}$ library.
+Now we will perform LDA on the `Smarket` data from the `ISLR` package. In `R`, we can fit a LDA model using the `lda()` function, which is part of the `MASS` library. **Note:** `dplyr` and `MASS` have a name clash around the word `select()`, so we need to do a little magic to make them play nicely.
 
 ```{r}
 library(MASS)
+library(dplyr)
 library(ISLR)
+select <- dplyr::select
 ```
 
-The syntax for the ${\tt lda()}$ function is identical to that of ${\tt lm()}$, and to that of
-${\tt glm()}$ except for the absence of the ${\tt family}$ option. As we did with logistic regression and KNN, we'll fit the model using only the observations before 2005, and then test the model on the data from 2005.
+The syntax for the `lda()` function is identical to that of `lm()`, and to that of
+`glm()` except for the absence of the `family` option. As we did with logistic regression and KNN, we'll fit the model using only the observations before 2005, and then test the model on the data from 2005.
 
 ```{r}
-train=(Smarket$Year<2005)
-lda.fit=lda(Direction~Lag1+Lag2,data=Smarket,subset=train)
-print(lda.fit)
+train = Smarket %>%
+  filter(Year < 2005)
+
+test = Smarket %>%
+  filter(Year >= 2005)
+
+model_LDA=lda(Direction~Lag1+Lag2,data=train)
+print(model_LDA)
 ```
 
 The LDA output indicates prior probabilities of ${\hat{\pi}}_1 = 0.492$ and ${\hat{\pi}}_2 = 0.508$; in other words,
@@ -30,103 +42,91 @@ for the previous days’ returns to be positive on days when the market
 declines. 
 
 The coefficients of linear discriminants output provides the linear
-combination of ${\tt Lag1}$ and ${\tt Lag2}$ that are used to form the LDA decision rule.
+combination of `Lag1` and `Lag2` that are used to form the LDA decision rule.
 
 If $−0.642\times{\tt Lag1}−0.514\times{\tt Lag2}$ is large, then the LDA classifier will
 predict a market increase, and if it is small, then the LDA classifier will
 predict a market decline. 
 
-We can use the ${\tt plot()}$ function to produce plots of the linear
+We can use the `plot()` function to produce plots of the linear
 discriminants, obtained by computing $−0.642\times{\tt Lag1}−0.514\times{\tt Lag2}$ for
 each of the training observations.
 
 ```{r}
-plot(lda.fit)
+plot(model_LDA)
 ```
 
-The ${\tt predict()}$ function returns a list with three elements. The first element,
-${\tt class}$, contains LDA’s predictions about the movement of the market.
-The second element, ${\tt posterior}$, is a matrix whose $k^{th}$ column contains the
+The `predict()` function returns a list with three elements. The first element,
+`class`, contains LDA’s predictions about the movement of the market.
+The second element, `posterior`, is a matrix whose $k^{th}$ column contains the
 posterior probability that the corresponding observation belongs to the $k^{th}$
-class. Finally, ${\tt x}$ contains the linear discriminants,
+class. Finally, `x` contains the linear discriminants,
 described earlier.
 
 ```{r}
-lda.pred=predict(lda.fit, Smarket[!train,]) # To get our test set, we can exclude the training data using '!'
-names(lda.pred)
+predictions_LDA = data.frame(predict(model_LDA, test))
+names(predictions_LDA)
 ```
 
-Let's check out the confusion matrix to see how this model is doing. We'll want to compare the **predicted class** (which we can find in ${\tt lda.pred\$class}$) to the **true class** (found in ${\tt Smarket\$Direction[!train]})$.
+Let's check out the confusion matrix to see how this model is doing. We'll want to compare the **predicted class** (which we can find in the `class` column of the `predictions_LDA` data frame) to the **true class**.
 
 ```{r}
-table(lda.pred$class,Smarket$Direction[!train])
-mean(lda.pred$class==Smarket$Direction[!train])
+
+predictions_LDA = cbind(test, predictions_LDA)
+
+predictions_LDA %>%
+  count(class, Direction)
+
+predictions_LDA %>%
+  summarize(score = mean(class == Direction))
 ```
 
 The LDA predictions are identical to the ones from our logistic model:
 
 ```{r}
 # Logistic model, for comparison
-glm.fit=glm(Direction~Lag1+Lag2,data=Smarket ,family=binomial, subset=train)
-glm.probs=predict(glm.fit,Smarket[!train,],type="response")
-glm.pred=rep("Down",252)
-glm.pred[glm.probs>.5]="Up"
-table(glm.pred,Smarket$Direction[!train])
-mean(glm.pred==Smarket$Direction[!train])
+model_logistic = glm(Direction~Lag1+Lag2, data=train ,family=binomial)
+
+logistic_probs = data.frame(probs = predict(model_logistic, test, type="response"))
+
+predictions_logistic = logistic_probs %>%
+  mutate(class = ifelse(probs>.5, "Up", "Down"))
+
+predictions_logistic = cbind(test, predictions_logistic)
+
+predictions_logistic %>%
+  count(class, Direction)
+
+glm_pred %>%
+  summarize(score = mean(class == Direction))
 ```
 
-Applying a 50% threshold to the posterior probabilities allows us to recreate
-the predictions contained in ${\tt lda.pred\$class}$.
-
-```{r}
-table(lda.pred$class)
-sum(lda.pred$posterior[,1]>=.5) # Down
-sum(lda.pred$posterior[,1]<.5) # Up
-```
-
-Notice that the posterior probability output by the model corresponds to
-the probability that the market will decrease:
-
-```{r}
-table(lda.pred$posterior[10:20,1], lda.class[10:20])
-```
-
-If we wanted to use a posterior probability threshold other than 50% in
-order to make predictions, then we could easily do so. For instance, suppose
-that we wish to predict a market decrease only if we are very certain that the
-market will indeed decrease on that day—say, if the posterior probability
-is at least 90%:
-
-```{r}
-sum(lda.pred$posterior[,1]>.9)
-```
-
-No days in 2005 meet that threshold! In fact, the greatest posterior probability
-of decrease in all of 2005 was 52.02%:
-
-```{r}
-max(lda.pred$posterior[,1])
-```
 
 # 4.6.4 Quadratic Discriminant Analysis
-We will now fit a QDA model to the ${\tt Smarket}$ data. QDA is implemented
-in ${\tt R}$ using the ${\tt qda()}$ function, which is also part of the MASS library. The
-syntax is identical to that of ${\tt lda()}$.
+We will now fit a QDA model to the `Smarket` data. QDA is implemented
+in `R` using the `qda()` function, which is also part of the MASS library. The
+syntax is identical to that of `lda()`.
 
 ```{r}
-qda.fit=qda(Direction~Lag1+Lag2,data=Smarket,subset=train)
-qda.fit
+model_QDA = qda(Direction~Lag1+Lag2, data=train)
+model_QDA
 ```
 
 The output contains the group means. But it does not contain the coefficients
 of the linear discriminants, because the QDA classifier involves a
-_quadratic_, rather than a linear, function of the predictors. The ${\tt predict()}$
+_quadratic_, rather than a linear, function of the predictors. The `predict()`
 function works in exactly the same fashion as for LDA.
 
 ```{r}
-qda.class=predict(qda.fit,Smarket[!train,])$class
-table(qda.class,Smarket$Direction[!train])
-mean(qda.class==Smarket$Direction[!train])
+predictions_QDA = data.frame(predict(model_QDA, test))
+
+predictions_QDA = cbind(test, predictions_QDA)
+
+predictions_QDA %>%
+  count(class, Direction)
+
+predictions_QDA %>%
+  summarize(score = mean(class == Direction))
 ```
 
 Interestingly, the QDA predictions are accurate almost 60% of the time,
@@ -141,8 +141,8 @@ evaluating this method’s performance on a larger test set before betting
 that this approach will consistently beat the market!
 
 # An Application to Carseats Data
-Let's see how the ${\tt LDA/QDA}$ approach performs on the ${\tt Carseats}$ data set, which is
-part of the ${\tt ISLR}$ library. 
+Let's see how the `LDA/QDA` approach performs on the `Carseats` data set, which is
+part of the `ISLR` library. 
 
 Recall: this is a simulated data set containing sales of child car seats at 400 different stores.
 
@@ -150,7 +150,7 @@ Recall: this is a simulated data set containing sales of child car seats at 400 
 summary(Carseats)
 ```
 
-See if you can build a model that predicts ${\tt ShelveLoc}$, the shelf location (Bad, Good, or Medium) of the product at each store. Don't forget to hold out some of the data for testing!
+See if you can build a model that predicts `ShelveLoc`, the shelf location (`Bad`, `Good`, or `Medium`) of the product at each store. Don't forget to hold out some of the data for testing!
 
 ```{r}
 # Your code here
@@ -162,4 +162,4 @@ To get credit for this lab, please post your answers to the following questions:
 - How did your model perform?
 - Was anything easier or more challenging than you anticipated?
 
-to Piazza: https://piazza.com/class/igwiv4w3ctb6rg?cid=23
+to Piazza: https://piazza.com/class/isuhyl9uxya5vm?cid=14
