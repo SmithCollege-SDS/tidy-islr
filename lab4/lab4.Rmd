@@ -72,15 +72,13 @@ glm_pred = glm_probs %>%
 
 The second line transforms to `Up` all of the elements for which the predicted probability of a
 market increase exceeds 0.5 and to `Down` all of those less than or equal to 0.5.
-Given these predictions, we can `count()` how many
-observations were correctly or incorrectly classified.
+Given these predictions, we can `count()` how many observations were correctly or incorrectly classified.
 
 ```{r}
 glm_pred = cbind(Smarket, glm_pred)
 
 glm_pred %>% 
-  group_by(Direction) %>% 
-  count(pred)
+  count(class, Direction)
 
 glm_pred %>%
   summarize(score = mean(pred == Direction))
@@ -142,8 +140,7 @@ glm_pred = glm_probs %>%
 glm_pred = cbind(test, glm_pred)
 
 glm_pred %>% 
-  group_by(Direction) %>% 
-  count(pred)
+  count(class, Direction)
 
 glm_pred %>%
   summarize(score = mean(pred == Direction),
@@ -182,8 +179,7 @@ glm_pred = glm_probs %>%
 glm_pred = cbind(test, glm_pred)
 
 glm_pred %>% 
-  group_by(Direction) %>% 
-  count(pred)
+  count(class, Direction)
 
 glm_pred %>%
   summarize(score = mean(pred == Direction))
