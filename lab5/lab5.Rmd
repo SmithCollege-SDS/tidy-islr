@@ -26,7 +26,7 @@ train = Smarket %>%
 test = Smarket %>%
   filter(Year >= 2005)
 
-model_LDA=lda(Direction~Lag1+Lag2,data=train)
+model_LDA=lda(Direction~Lag1+Lag2, data=train)
 print(model_LDA)
 ```
 
