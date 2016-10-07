@@ -9,6 +9,10 @@ Applications in R" by Gareth James, Daniela Witten, Trevor Hastie and Robert Tib
 ```{r}
 library(ISLR)
 library(dplyr)
+library(broom)
+library(modelr)
+library(purrr)
+library(tidyr)
 ```
 
 # 5.3.1 The Validation Set Approach
@@ -45,22 +49,34 @@ observations, and we use the `mean()`function to calculate the MSE of the
 196 observations in the test set:
 
 ```{r}
-mean((test$mpg - predict(model_LR, test))^2)
+test = test %>%
+  mutate(predictions_quad = predict(model_LR, test))
+
+test %>%
+  summarize(MSE_slr = mean((mpg-predictions_quad)^2))
 ```
 
-Therefore, the estimated test MSE for the linear regression fit is 21.76. We
+Therefore, the estimated test MSE for the linear regression fit is 26.14. We
 can use the `poly()`function to estimate the test error for the quadratic
 and cubic regressions.
 
 ```{r}
 model_QUAD = lm(mpg~poly(horsepower,2), data=train)
-mean((test$mpg - predict(model_QUAD, test))^2)
+
+test = test %>%
+  mutate(predictions_quad = predict(model_QUAD, test))
+test %>% 
+  summarize(MSE_quad = mean((mpg-predictions_quad)^2))
 
 model_CUBIC = lm(mpg~poly(horsepower,3),data=train)
-mean((test$mpg - predict(model_CUBIC, test))^2)
+
+test = test %>%
+  mutate(predictions_cubic = predict(model_CUBIC, test))
+test %>%
+  summarize(MSE_cubic = mean((mpg-predictions_cubic)^2))
 ```
 
-These error rates are 16.36 and 16.46, respectively. If we choose a different
+These error rates are 19.82 and 19.78, respectively. If we choose a different
 training set instead, then we will obtain somewhat different errors on the
 validation set. We can test this out by setting a different random seed:
 
@@ -74,13 +90,24 @@ test = Auto %>%
   setdiff(train)
 
 model_LR2 = lm(mpg~horsepower, data=train)
-mean((test$mpg - predict(model_LR2, test))^2)
+
+test = test %>%
+  mutate(predictions_slr = predict(model_LR2, test))
 
 model_QUAD2=lm(mpg~poly(horsepower,2),data=train)
-mean((test$mpg - predict(model_QUAD2, test))^2)
+
+test = test %>%
+  mutate(predictions_quad = predict(model_QUAD2, test))
 
 model_CUBIC2=lm(mpg~poly(horsepower,3),data=train)
-mean((test$mpg - predict(model_CUBIC2, test))^2)
+
+test = test %>%
+  mutate(predictions_cubic =  predict(model_CUBIC2, test))
+
+test %>%
+  summarize(MSE_slr = mean((mpg-predictions_slr)^2),
+            MSE_quad = mean((mpg - predictions_quad)^2),
+            MSE_cube = mean((mpg - predictions_cubic)^2))
 ```
 
 Using this split of the observations into a training set and a validation
@@ -101,10 +128,10 @@ without passing in the family argument, then it performs linear regression,
 just like the `lm()` function. The following should yield identical models:
 
 ```{r}
-model_GLR=glm(mpg~horsepower,data=Auto)
+model_GLR=glm(mpg~horsepower, data=Auto)
 coef(model_GLR)
 
-model_LR=lm(mpg~horsepower,data=Auto)
+model_LR=lm(mpg~horsepower, data=Auto)
 coef(model_LR)
 ```
 
@@ -115,6 +142,7 @@ the latter can be used together with `cv.glm()` to perform cross-validation. The
 ```{r}
 library(boot)
 model_GLR = glm(mpg~horsepower, data=Auto)
+
 cv.err = cv.glm(Auto, model_GLR)
 cv.err$delta
 ```
@@ -133,10 +161,12 @@ to `i = 5` and computes the associated cross-validation error.
 This command may take a couple of minutes to run.
 
 ```{r}
+deltas = data.frame(delta1=0, delta2=0)
 for (i in 1:5){
  model_GLR = glm(mpg~poly(horsepower,i), data=Auto)
- print(cv.glm(Auto, model_GLR)$delta)
+ deltas[i,] = cv.glm(Auto, model_GLR)$delta
 }
+deltas
 ```
 
 Here we see a sharp drop in the estimated test MSE between
@@ -152,11 +182,12 @@ corresponding to the polynomial fits of orders one to ten.
 
 ```{r}
 set.seed(1)
-
+deltas = data.frame(delta1 = 0, delta2 = 0)
 for (i in 1:10){
  model_GLR = glm(mpg~poly(horsepower,i), data=Auto)
- print(cv.glm(Auto, model_GLR, K=10)$delta)
+ deltas[i, ] = cv.glm(Auto, model_GLR, K=10)$delta
 }
+deltas
 ```
 
 Notice that the computation time is **much** shorter than that of LOOCV.
@@ -175,7 +206,7 @@ each other.
 
 # An Application to Default Data
 
-Now that you're armed with more useful technique for resampling your data, let's try fitting a model for the `Default`dataset:
+Now that you're armed with more useful technique for resampling your data, let's try fitting a model for the `Default` dataset:
 
 ```{r}
 summary(Default)
@@ -236,17 +267,16 @@ are required. Performing a bootstrap analysis in R entails only two steps.
 - First, we must create a function that computes the statistic of interest.
 - Second, we use the `boot()` function, which is part of the boot library, to perform the bootstrap by repeatedly sampling observations from the data set with replacement.
 
-The `Portfolio`data set in the `ISLR` package is described in Section 5.2.
+The `Portfolio`data set in the `ISLR` package is described in Section 5.2. It has variables called `X` and `Y`. 
 To illustrate the use of the bootstrap on this data, we must first create
-a function, `alpha.fn()`, which takes as input the `(X,Y)` data as well as
-a vector indicating which observations should be used to estimate $\alpha$. The
-function then outputs the estimate for $\alpha$ based on the selected observations.
+a function, `fn_alpha()`, which takes as input the data and outputs the estimate for $\alpha$ (described in more detail on page 187).
 
 ```{r}
-alpha.fn=function(data,index){
-  X=data$X[index]
-  Y=data$Y[index]
-  return((var(Y)-cov(X,Y))/(var(X)+var(Y)-2*cov(X,Y)))
+fn_alpha = function(data){
+  Y = data$Y
+  X = data$X
+  alpha = (var(Y)-cov(X,Y))/(var(X)+var(Y)-2*cov(X,Y))
+  return(list(alpha=alpha))
 }
 ```
 
@@ -255,7 +285,9 @@ This function returns, or outputs, an estimate for $\alpha$ based on applying
 following command tells `R` to estimate $\alpha$ using all 100 observations.
 
 ```{r}
-alpha.fn(Portfolio,1:100)
+Portfolio %>%
+  slice(1:100) %>%
+  fn_alpha()
 ```
 
 The next command uses the `sample()` function to randomly select 100 observations
@@ -265,14 +297,23 @@ new data set.
 
 ```{r}
 set.seed(1)
-alpha.fn(Portfolio, sample(100,100,replace=T))
+Portfolio %>%
+  sample_n(100, replace=TRUE) %>%
+  fn_alpha()
 ```
 
 We can implement a bootstrap analysis by performing this command many
 times, recording all of the corresponding estimates for $\alpha$, and computing the resulting standard deviation. However, the `boot()`function automates
 this approach. Below we produce $R = 1,000$ bootstrap estimates for $\alpha$:
 
-```{r}
+```{r, eval=FALSE}
+bootstrap_Portfolio = Portfolio %>%
+  modelr::bootstrap(1) 
+
+bootstrap_Portfolio %>%
+  mutate(alpha = map(strap, fn_alpha)) 
+
+
 boot(Portfolio, alpha.fn, R=1000)
 ```
 
@@ -288,67 +329,121 @@ model that uses horsepower to predict mpg in the Auto data set. We
 will compare the estimates obtained using the bootstrap to those obtained
 using the formulas for $SE(\hat{\beta}_0)$ and $SE(\hat{\beta}_1)$ described in Section 3.1.2.
 
-We first create a simple function, `boot.fn()}$, which takes in the `Auto`data
+We first create a simple function, `fn_model()`, which takes in the `Auto` data
 set as well as a set of indices for the observations, and returns the intercept
 and slope estimates for the linear regression model. We then apply this
 function to the full set of 392 observations in order to compute the estimates
 of $\beta_0$ and $\beta_1$ on the entire data set using the usual linear regression
-coefficient estimate formulas from Chapter 3. Note that we do not need the
-{ and } at the beginning and end of the function because it is only one line
-long:
+coefficient estimate formulas from Chapter 3. 
 
 ```{r}
-boot.fn=function(data,index) return(coef(lm(mpg~horsepower ,data=data ,subset =index)))
-boot.fn(Auto,1:392)
+fn_model = function(data){
+  lm(mpg ~ horsepower, data = data)
+}
+
+Auto %>% fn_model()
 ```
 
-The `boot.fn()`function can also be used in order to create bootstrap estimates
+The `fn_model()`function can also be used in order to create bootstrap estimates
 for the intercept and slope terms by randomly sampling from among
 the observations with replacement. Here we give two examples:
 
+
 ```{r}
 set.seed(1)
-boot.fn(Auto,sample(392,392,replace=T))
-boot.fn(Auto,sample(392,392,replace=T))
+Auto_bootstrap = Auto %>%
+  modelr::bootstrap(1)
+
+df_regression_bootstrap_model = Auto_bootstrap %>%
+  mutate(model = map(strap, fn_model)) 
+
+df_regression_bootstrap_param = df_regression_bootstrap_model %>%
+  mutate(param = map(model, tidy)) %>%
+  select(.id, param) %>%
+  unnest() %>%
+  print()
+
+Auto %>%
+  modelr::bootstrap(1) %>%
+  mutate(model = map(strap, fn_model))  %>%
+  mutate(param = map(model, tidy)) %>%
+  select(.id, param) %>%
+  unnest() %>%
+  print()
 ```
 
-Next, we use the `boot()`function to compute the standard errors of 1,000
+
+Next, we use the `bootstrap()`function to compute the standard errors of 1,000
 bootstrap estimates for the intercept and slope terms:
 
 ```{r}
-boot(Auto,boot.fn,1000)
+set.seed(1)
+Auto_bootstrap = Auto %>%
+  modelr::bootstrap(1000)
+
+df_regression_bootstrap_model = Auto_bootstrap %>%
+  mutate(model = map(strap, fn_model)) 
+
+df_regression_bootstrap_param = df_regression_bootstrap_model %>%
+  mutate(param = map(model, tidy)) %>%
+  select(.id, param) %>%
+  unnest() %>%
+  print()
+
+df_regression_bootstrap_param %>%
+  group_by(term) %>%
+  summarize(point_est = mean(estimate),
+            std_error = mean(std.error))
+
 ```
 
-This indicates that the bootstrap estimate for $SE(\hat\beta_0)$ is 0.86, and that
-the bootstrap estimate for $SE(\hat\beta_1)$ is 0.0074. As discussed in Section 3.1.2,
+This indicates that the bootstrap estimate for $SE(\hat\beta_0)$ is 0.716, and that
+the bootstrap estimate for $SE(\hat\beta_1)$ is 0.0064. As discussed in Section 3.1.2,
 standard formulas can be used to compute the standard errors for the
 regression coefficients in a linear model. These can be obtained using the
 `summary()`function:
 
 ```{r}
-summary(lm(mpg~horsepower ,data=Auto))$coef
+summary(lm(mpg~horsepower, data=Auto))
 ```
 
-Note that the standard error estimates produced by the `summary()`function were somewhat different from the estimates obtained using the bootstrap. Does this indicate a problem with the bootstrap? In fact, it's just the opposite!
+Note that the standard error estimates produced by the `summary()`function were a little different from the estimates obtained using the bootstrap. Does this indicate a problem with the bootstrap? In fact, it's just the opposite!
 
-Recall that we found previously that the relationship between `horsepower`and `mpg`is better characterized by a quadratic model. Let's see how the error rates compare when we fit that instead of a linear model:
+Recall that we found previously that the relationship between `horsepower` and `mpg` is better characterized by a quadratic model. Let's see how the error rates compare when we fit that instead of a linear model:
 
 ```{r}
-boot.fn=function(data,index) coefficients(lm(mpg~horsepower +I( horsepower ^2) ,data=data ,
-subset =index))
+fn_boot = function(data){
+  lm(mpg~horsepower + I(horsepower^2) ,data=data)
+}
+
 set.seed(1)
-boot(Auto,boot.fn,1000)
+Auto_bootstrap = Auto %>%
+  modelr::bootstrap(1000)
+
+df_regression_bootstrap_model = Auto_bootstrap %>%
+  mutate(model = map(strap, fn_boot)) 
+
+df_regression_bootstrap_param = df_regression_bootstrap_model %>%
+  mutate(param = map(model, tidy)) %>%
+  select(.id, param) %>%
+  unnest() %>%
+  print()
+
+df_regression_bootstrap_param %>%
+  group_by(term) %>%
+  summarize(point_est = mean(estimate),
+            std_error = mean(std.error))
 ```
 
 ```{r}
-summary(lm(mpg~horsepower +I(horsepower ^2) ,data=Auto))$coef
+summary(lm(mpg~horsepower + I(horsepower^2), data=Auto))
 ```
 
 Since this model provides a good fit to the data, there is now a better correspondence between the bootstrap estimates and the standard estimates of $SE(\hat\beta_0), SE(\hat\beta_1)$ and $SE(\hat\beta_2)$.
 
 To get credit for this lab, please post your answers to the following questions:
 - How did the cross-validated error rate compare to the models where you held out a validation set? Why do you think that is?
-- How do you explain the discrepancy between the bootstrap evaluation and the standard error evaluation of the linear model predicting `mpg`from `horsepower}$?
+- How do you explain the discrepancy between the bootstrap evaluation and the standard error evaluation of the linear model predicting `mpg `from `horsepower`?
 - What was the most confusing part of today's class?
 
 to Piazza: https://piazza.com/class/igwiv4w3ctb6rg?cid=27

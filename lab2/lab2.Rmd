@@ -29,7 +29,7 @@ model_SL = lm(medv~lstat)
 Unfortunately, the above line will break because `R` doesn't know where to look for the data. We'll need to tell it explicitly that `data = Boston` within this function call. Now let's fit a simple linear model (we'll call it `model_SL`):
 
 ```{r}
-model_SL = lm(medv~lstat,data=Boston)
+model_SL = lm(medv~lstat, data=Boston)
 ```
 
 If we type `model_SL`, some basic information about the model is output. For more detailed information, we use `summary(model_SL)`
@@ -55,7 +55,7 @@ confint(model_SL)
 The `predict()` function can be used to produce both confidence intervals and prediction intervals for the prediction of `medv` for a given value of `lstat`. First, we'll make a data frame with some new values for `lstat`
 
 ```{r}
-new_values = data.frame(lstat=(c(5,10,15)))
+new_values = data.frame(lstat=c(5,10,15))
 ```
 
 Now, we'll call the `predict()` function to see what our model predicts for the corresponding `medv` value, as well as the `confidence` or `prediction` intervals:
@@ -122,14 +122,14 @@ which.max(hatvalues(model_SL))
 In order to fit a multiple linear regression model using least squares, we again use the `lm()` function. The syntax `lm(y∼x1+x2+x3)` is used to fit a model with three predictors, `x1`, `x2`, and `x3`. The `summary()` function now outputs the regression coefficients for all the predictors.
 
 ```{r}
-model_ML = lm(medv~lstat+age,data=Boston)
+model_ML = lm(medv~lstat+age, data=Boston)
 summary(model_ML)
 ```
 
 The Boston data set contains 13 variables, and so it would be cumbersome to have to type all of these in order to perform a regression using all of the predictors. Instead, we can use the following short-hand:
 
 ```{r}
-model_ML = lm(medv~.,data=Boston)
+model_ML = lm(medv~., data=Boston)
 summary(model_ML)
 ```
 
@@ -143,7 +143,7 @@ vif(model_ML)
 What if we would like to perform a regression using all of the variables but one? For example, in the above regression output, `age` has a high p-value. So we may wish to run a regression excluding this predictor. The following syntax results in a regression using all predictors except `age`.
 
 ```{r}
-model_ML_no_age = lm(medv~.-age,data=Boston)
+model_ML_no_age = lm(medv~.-age, data=Boston)
 summary(model_ML_no_age)
 ```
 
@@ -158,7 +158,7 @@ model_ML_no_age = update(model_ML, ~.-age)
 It is easy to include interaction terms in a linear model using the `lm()` function. The syntax `lstat:black` tells R to include an interaction term between `lstat` and `black`. The syntax `lstat*age` simultaneously includes `lstat`, `age`, and the interaction term `lstat×age` as predictors; it is a shorthand for `lstat+age+lstat:age`.
 
 ```{r}
-summary(lm(medv~lstat*age,data=Boston))
+summary(lm(medv~lstat*age, data=Boston))
 ```
 
 # 3.6.5 Non-linear Transformations of the Predictors
@@ -166,14 +166,14 @@ summary(lm(medv~lstat*age,data=Boston))
 The `lm()` function can also accommodate non-linear transformations of the predictors. For instance, given a predictor `X`, we can create a predictor `X2` using `I(X^2)`. The function `I()` is needed since the ^ has a special meaning in a formula; wrapping as we do allows the standard usage in R, which is to raise `X` to the power 2. We now perform a regression of `medv` onto `lstat` and `lstat2`.
 
 ```{r}
-model_ML_quadratic=lm(medv~lstat+I(lstat^2),data=Boston)
+model_ML_quadratic=lm(medv~lstat+I(lstat^2), data=Boston)
 summary(model_ML_quadratic)
 ```
 
 The near-zero p-value associated with the quadratic term suggests that it leads to an improved model. We use the `anova()` function to further quantify the extent to which the quadratic fit is superior to the linear fit.
 
 ```{r}
-anova(model_SL,model_ML_quadratic)
+anova(model_SL, model_ML_quadratic)
 ```
 
 Here Model 1 represents the linear submodel containing only one predictor, `lstat`, while Model 2 corresponds to the larger quadraticmodel that has two predictors, `lstat` and `lstat2`. The `anova()` function performs a hypothesis test comparing the two models. The null hypothesis is that the two models fit the data equally well, and the alternative hypothesis is that the full model is superior. 
@@ -191,7 +191,7 @@ then we see that when the `lstat2` term is included in the model, there is littl
 In order to create a cubic fit, we can include a predictor of the form `I(X^3)`. However, this approach can start to get cumbersome for higher order polynomials. A better approach involves using the `poly()` function to create the polynomial within `lm()`. For example, the following command produces a fifth-order polynomial fit:
 
 ```{r}
-model_ML_5th_order_poly = lm(medv~poly(lstat,5,raw=TRUE),data=Boston)
+model_ML_5th_order_poly = lm(medv~poly(lstat, 5, raw=TRUE), data=Boston)
 summary(model_ML_5th_order_poly)
 ```
 
@@ -200,7 +200,7 @@ This suggests that including additional polynomial terms, up to fifth order, lea
 Of course, we are in no way restricted to using polynomial transformations of the predictors. Here we try a log transformation.
 
 ```{r}
-summary(lm(medv~log(rm),data=Boston))
+summary(lm(medv~log(rm), data=Boston))
 ```
 
 # 3.6.6 Qualitative Predictors
@@ -216,7 +216,7 @@ The `Carseats` data includes qualitative predictors such as `Shelveloc`, an indi
 Given a qualitative variable such as `Shelveloc`, R generates dummy variables automatically. Below we fit a multiple regression model that includes some interaction terms.
 
 ```{r}
-lm.fit=lm(Sales~.+Income:Advertising+Price:Age,data=Carseats)
+lm.fit=lm(Sales~.+Income:Advertising+Price:Age, data=Carseats)
 summary(lm.fit)
 ```
 
