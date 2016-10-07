@@ -273,8 +273,16 @@ a function, `fn_alpha()`, which takes as input the data and outputs the estimate
 
 ```{r}
 fn_alpha = function(data){
+  
+  # resample class needs to be "reconstituted" into a dataframe
+  data <- as.data.frame(data)
+
   data %>%
-  summarize(alpha = (var(Y)-cov(X,Y))/(var(X)+var(Y)-2*cov(X,Y)))
+  summarize(alpha = (var(Y)-cov(X,Y))/(var(X)+var(Y)-2*cov(X,Y))) %>%
+  .$alpha
+  
+  # could it be useful to return a scalar here?
+  # also changes map function below
 }
 ```
 
@@ -308,11 +316,12 @@ this approach. Below we produce $R = 1,000$ bootstrap estimates for $\alpha$:
 bootstrap_Portfolio = Portfolio %>%
   modelr::bootstrap(1000) 
 
+# map changed to map_dbl (fn_alpha changed to return scalar)
 bootstrap_Portfolio %>%
-  mutate(alpha = map(strap, fn_alpha)) 
+  mutate(alpha = map_dbl(strap, fn_alpha)) 
 
 
-boot(Portfolio, alpha.fn, R=1000)
+#boot(Portfolio, alpha.fn, R=1000)
 ```
 
 The final output shows that using the original data, $\hat{\alpha} = 0.5758$, and that the bootstrap estimate for $SE(\hat{\alpha})$ is 0.0886.
