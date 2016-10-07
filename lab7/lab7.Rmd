@@ -273,10 +273,8 @@ a function, `fn_alpha()`, which takes as input the data and outputs the estimate
 
 ```{r}
 fn_alpha = function(data){
-  Y = data$Y
-  X = data$X
-  alpha = (var(Y)-cov(X,Y))/(var(X)+var(Y)-2*cov(X,Y))
-  return(list(alpha=alpha))
+  data %>%
+  summarize(alpha = (var(Y)-cov(X,Y))/(var(X)+var(Y)-2*cov(X,Y)))
 }
 ```
 
@@ -308,7 +306,7 @@ this approach. Below we produce $R = 1,000$ bootstrap estimates for $\alpha$:
 
 ```{r, eval=FALSE}
 bootstrap_Portfolio = Portfolio %>%
-  modelr::bootstrap(1) 
+  modelr::bootstrap(1000) 
 
 bootstrap_Portfolio %>%
   mutate(alpha = map(strap, fn_alpha)) 
