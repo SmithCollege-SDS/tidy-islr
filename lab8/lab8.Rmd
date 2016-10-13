@@ -1,26 +1,36 @@
-This lab on Subset Selection in R comes from p. 244-247 of "Introduction to Statistical Learning with Applications in R" by Gareth James, Daniela Witten, Trevor Hastie and Robert Tibshirani.
+```{r, message=FALSE, warning=FALSE, echo=FALSE}
+require(knitr)
+opts_chunk$set(eval=FALSE)
+```
+
+This lab on Subset Selection in R comes from p. 244-247 of "Introduction to Statistical Learning with Applications in R" by Gareth James, Daniela Witten, Trevor Hastie and Robert Tibshirani. It was re-implemented in Fall 2016 in `tidyverse` format by Amelia McNamara and R. Jordan Crouser at Smith College.
+
 
 # 6.5.1 Best Subset Selection
 
-Here we apply the best subset selection approach to the Hitters data. We
+Here we apply the best subset selection approach to the `Hitters` data. We
 wish to predict a baseball player’s Salary on the basis of various statistics
 associated with performance in the previous year. Let's take a quick look:
 
 ```{r}
 library(ISLR)
+library(dplyr)
 head(Hitters)
 ```
 
-First of all, we note that the ${\tt Salary}$ variable is missing for some of the
-players. The ${\tt is.na()}$ function can be used to identify the missing observations. It returns a vector of the same length as the input vector, with a ${\tt TRUE}$ value
-for any elements that are missing, and a ${\tt FALSE}$ value for non-missing elements.
-The ${\tt sum()}$ function can then be used to count all of the missing elements:
+First of all, we note that the `Salary` variable is missing for some of the
+players. The `is.na()` function can be used to identify the missing observations. It returns a vector of the same length as the input vector, with a `TRUE` value
+for any elements that are missing, and a `FALSE` value for non-missing elements.
+The `sum()` function can then be used to count all of the missing elements:
 
 ```{r}
-sum(is.na(Hitters$Salary))
+Hitters %>%
+  select(Salary) %>%
+  is.na() %>%
+  sum()
 ```
 
-We see that ${\tt Salary}$ is missing for 59 players. The ${\tt na.omit()}$ function
+We see that `Salary` is missing for 59 players. The `na.omit()` function
 removes all of the rows that have missing values in any variable:
 
 ```{r}
@@ -28,46 +38,49 @@ removes all of the rows that have missing values in any variable:
 dim(Hitters)
 
 # Drop any rows the contain missing values
-Hitters = na.omit(Hitters)
+Hitters = Hitters %>%
+  na.omit()
 
 # Print the dimensions of the modified Hitters data (263 rows x 20 columns)
 dim(Hitters)
 
 # One last check: should return 0
-sum(is.na(Hitters))
+Hitters %>%
+  is.na() %>%
+  sum()
 ```
 
-The ${\tt regsubsets()}$ function (part of the ${\tt leaps}$ library) performs best subset selection by identifying the best model that contains a given number of predictors, where **best** is quantified using RSS. The syntax is the same as for ${\tt lm()}$. The ${\tt summary()}$ command outputs the best set of variables for
+The `regsubsets()` function (part of the `leaps` library) performs best subset selection by identifying the best model that contains a given number of predictors, where **best** is quantified using RSS. The syntax is the same as for `lm()`. The `summary()` command outputs the best set of variables for
 each model size.
 
 ```{r}
 library(leaps)
-regfit.full = regsubsets(Salary~.,Hitters)
-summary(regfit.full)
+regfit_full = regsubsets(Salary~., data = Hitters)
+summary(regfit_full)
 ```
 
 An asterisk ("\*") indicates that a given variable is included in the corresponding
 model. For instance, this output indicates that the best two-variable model
-contains only Hits and CRBI. By default, $\tt{regsubsets()}$ only reports results
-up to the best eight-variable model. But the ${\tt nvmax}$ option can be used
+contains only `Hits` and `CRBI`. By default, `regsubsets()` only reports results
+up to the best eight-variable model. But the `nvmax` option can be used
 in order to return as many variables as are desired. Here we fit up to a
 19-variable model:
 
 ```{r}
-regfit.full=regsubsets(Salary~.,data=Hitters ,nvmax = 19)
-reg.summary = summary(regfit.full)
+regfit_full = regsubsets(Salary~., data = Hitters, nvmax = 19)
+reg_summary = summary(regfit_full)
 ```
 
-Notice that rather than letting the results of our call to the ${\tt summary()}$ function print to the screen, we've saved the results to a variable called ${\tt reg.summary}$. That way, we can access just the parts we need. Let's see what's in there:
+Notice that rather than letting the results of our call to the `summary()` function print to the screen, we've saved the results to a variable called `reg_summary`. That way, we can access just the parts we need. Let's see what's in there:
 
 ```{r}
-names(reg.summary)
+names(reg_summary)
 ```
 
-Excellent! In addition to the verbose output we get when we print the summary to the screen, the ${\tt summary()}$ function also returns $R^2 (\tt{rsq})$, RSS, adjusted $R^2$, $C_p$, and BIC. We can examine these to try to select the best overall model. Let's start by looking at $R^2$:
+Excellent! In addition to the verbose output we get when we print the summary to the screen, the `summary()` function also returns $R^2 (\tt{rsq})$, RSS, adjusted $R^2$, $C_p$, and BIC. We can examine these to try to select the best overall model. Let's start by looking at $R^2$:
 
 ```{r}
-reg.summary$rsq
+reg_summary$rsq
 ```
 
 We see that the $R^2$ statistic increases from 32% when only
@@ -76,106 +89,106 @@ are included. As expected, the $R^2$ statistic increases monotonically as more
 variables are included.
 
 Plotting RSS, adjusted $R^2$, $C_p$, and BIC for all of the models at once will
-help us decide which model to select. Note the ${\tt type="l"}$ option tells ${\tt R}$ to
+help us decide which model to select. Note the `type="l"` option tells `R` to
 connect the plotted points with lines:
 
 ```{r}
 # Set up a 2x2 grid so we can look at 4 plots at once
 par(mfrow=c(2,2))
-plot(reg.summary$rss, xlab = "Number of Variables", ylab = "RSS", type = "l")
-plot(reg.summary$adjr2, xlab = "Number of Variables", ylab = "Adjusted RSq", type = "l")
+plot(reg_summary$rss, xlab = "Number of Variables", ylab = "RSS", type = "l")
+plot(reg_summary$adjr2, xlab = "Number of Variables", ylab = "Adjusted RSq", type = "l")
 
 # We will now plot a red dot to indicate the model with the largest adjusted R^2 statistic.
 # The which.max() function can be used to identify the location of the maximum point of a vector
     
-which.max(reg.summary$adjr2) # 11
+which.max(reg_summary$adjr2) # 11
 
 # The points() command works like the plot() command, except that it puts points 
 # on a plot that has already been created instead of creating a new plot
-points(11,reg.summary$adjr2[11], col ="red", cex = 2, pch = 20)
+points(11,reg_summary$adjr2[11], col ="red", cex = 2, pch = 20)
 
 # We'll do the same for C_p and BIC, this time looking for the models with the SMALLEST statistic
-plot(reg.summary$cp, xlab = "Number of Variables", ylab = "Cp", type = "l")
-which.min(reg.summary$cp) # 10
-points(10, reg.summary$cp[10], col = "red", cex = 2, pch = 20)
+plot(reg_summary$cp, xlab = "Number of Variables", ylab = "Cp", type = "l")
+which.min(reg_summary$cp) # 10
+points(10, reg_summary$cp[10], col = "red", cex = 2, pch = 20)
 
-plot(reg.summary$bic, xlab = "Number of Variables", ylab = "BIC", type = "l")
-which.min(reg.summary$bic) # 6
-points(6, reg.summary$bic[6], col = "red", cex = 2, pch = 20)
+plot(reg_summary$bic, xlab = "Number of Variables", ylab = "BIC", type = "l")
+which.min(reg_summary$bic) # 6
+points(6, reg_summary$bic[6], col = "red", cex = 2, pch = 20)
 ```
 
 Recall that in the second step of our selection process, we narrowed the field down to just one model on any $k<=p$ predictors. We see that according to BIC, the best performer is the model with 6 variables. According to $C_p$, 10 variables. Adjusted $R^2$ suggests that 11 might be best. Again, no one measure is going to give us an entirely accurate picture... but they all agree that a model with 5 or fewer predictors is insufficient, and a model with more than 12 is overfitting.
 
-The ${\tt regsubsets()}$ function has a built-in ${\tt plot()}$ command which can
+The `regsubsets()` function has a built-in `plot()` command which can
 be used to display the selected variables for the best model with a given
 number of predictors, ranked according to a chosen statistic.  The top row of each plot contains a black square for each variable selected according to the optimal model associated with that statistic. 
 
-To find out more about this function, type ${\tt ?plot.regsubsets}$.
+To find out more about this function, type `?plot.regsubsets`.
 
 ```{r}
-plot(regfit.full,scale="r2")
+plot(regfit_full, scale="r2")
 ```
 
 As expected, $R^2$ is maximized by the model that contains all 20 predictors.
 
 ```{r}
-plot(regfit.full,scale="adjr2")
+plot(regfit_full, scale="adjr2")
 ```
 
-Adjusted $R^2$ downselects to just 11 predictors. We can use the ${\tt coef()}$ function to see which predictors made the cut:
+Adjusted $R^2$ downselects to just 11 predictors. We can use the `coef()` function to see which predictors made the cut:
 
 ```{r}
-coef(regfit.full,11)
-```
-
-```{r}
-plot(regfit.full,scale="Cp")
-```
-
-$C_p$ downselects further, dropping the ${\tt LeagueN}$ predictor and bringing the number down to 10: 
-
-```{r}
-coef(regfit.full,10)
+coef(regfit_full, 11)
 ```
 
 ```{r}
-plot(regfit.full,scale="bic")
+plot(regfit_full, scale="Cp")
+```
+
+$C_p$ downselects further, dropping the `LeagueN` predictor and bringing the number down to 10: 
+
+```{r}
+coef(regfit_full, 10)
+```
+
+```{r}
+plot(regfit_full, scale="bic")
 ```
 
 We see that several models share a BIC close to −150. However, the model
-with the lowest BIC is the six-variable model that contains only ${\tt AtBat,
-Hits, Walks, CRBI, DivisionW,}$ and ${\tt PutOuts}$:
+with the lowest BIC is the six-variable model that contains only `AtBat,
+Hits, Walks, CRBI, DivisionW,` and `PutOuts`:
 
 ```{r}
-coef(regfit.full,6)
+coef(regfit_full, 6)
 ```
 
 # 6.5.2 Forward and Backward Stepwise Selection
-We can also use the ${\tt regsubsets()}$ function to perform forward stepwise
-or backward stepwise selection, using the argument ${\tt method="forward"}$ or
-${\tt method="backward"}$.
+We can also use the `regsubsets()` function to perform forward stepwise
+or backward stepwise selection, using the argument `method="forward"` or
+`method="backward"`.
 
 ```{r}
 # Forward
-regfit.fwd=regsubsets(Salary~.,data=Hitters,nvmax=19,method="forward")
-summary(regfit.fwd)
+regfit_fwd = regsubsets(Salary~., data=Hitters, nvmax=19, method="forward")
+summary(regfit_fwd)
 ```
 
 ```{r}
 # Backward
-regfit.bwd=regsubsets(Salary~.,data=Hitters,nvmax=19,method="backward")
-summary(regfit.bwd)
+regfit_bwd = regsubsets(Salary~., data=Hitters, nvmax=19, method="backward")
+summary(regfit_bwd)
 ```
 
 We see that using forward stepwise selection, the best onevariable
-model contains only ${\tt CRBI}$, and the best two-variable model additionally
-includes ${\tt Hits}$. For this data, the best one-variable through six-variable
+model contains only `CRBI`, and the best two-variable model additionally
+includes `Hits`. For this data, the best one-variable through six-variable
 models are each identical for best subset and forward selection.
 However, the best seven-variable models identified by forward stepwise selection,
 backward stepwise selection, and best subset selection are different.
 
 ```{r}
-coef(regfit.full,7)
-coef(regfit.fwd,7)
-coef(regfit.bwd,7)
+coef(regfit_full, 7)
+coef(regfit_fwd, 7)
+coef(regfit_bwd, 7)
 ```
