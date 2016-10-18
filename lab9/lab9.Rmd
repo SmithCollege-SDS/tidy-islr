@@ -1,8 +1,14 @@
-This lab on Model Validation using Validation and Cross-Validation in R comes from p. 248-251 of "Introduction to Statistical Learning with Applications in R" by Gareth James, Daniela Witten, Trevor Hastie and Robert Tibshirani.
+```{r, message=FALSE, warning=FALSE, echo=FALSE}
+require(knitr)
+opts_chunk$set(eval=FALSE)
+```
+
+This lab on Model Validation using Validation and Cross-Validation in R comes from p. 248-251 of "Introduction to Statistical Learning with Applications in R" by Gareth James, Daniela Witten, Trevor Hastie and Robert Tibshirani. It was re-implemented in Fall 2016 in `tidyverse` format by Amelia McNamara and R. Jordan Crouser at Smith College.
 
 ```{r}
 library(ISLR)
 library(leaps)
+library(dplyr)
 ```
 
 # Model selection using the Validation Set Approach
@@ -11,10 +17,10 @@ In Lab 8, we saw that it is possible to choose among a set of models of differen
 sizes using $C_p$, BIC, and adjusted $R^2$. We will now consider how to do this
 using the validation set and cross-validation approaches.
 
-As in Lab 8, we'll be working with the ${\tt Hitters}$ dataset from ${\tt ISLR}$. Since we're trying to predict ${\tt Salary}$ and we know from last time that some are missing, let's first drop all the rows with missing values:
+As in Lab 8, we'll be working with the `Hitters` dataset from `ISLR`. Since we're trying to predict `Salary` and we know from last time that some are missing, let's first drop all the rows with missing values:
 
 ```{r}
-Hitters=na.omit(Hitters)
+Hitters = na.omit(Hitters)
 ```
 
 In order for these approaches to yield accurate estimates of the test
@@ -27,58 +33,56 @@ cross-validation errors that we obtain will not be accurate estimates of the
 test error.
 
 In order to use the validation set approach, we begin by splitting the
-observations into a training set and a test set. We do this by creating
-a random vector, train, of elements equal to TRUE if the corresponding
-observation is in the training set, and FALSE otherwise. The vector test has
-a TRUE if the observation is in the test set, and a FALSE otherwise. Note the
-! in the command to create test causes TRUEs to be switched to FALSEs and
-vice versa. We also set a random seed so that the user will obtain the same
-training set/test set split.
+observations into a training set and a test set as before. Here, we've decided to split the data in half using the `sample_frac()` method:
 
 ```{r}
 set.seed(1)
-train=sample(c(TRUE,FALSE), nrow(Hitters),rep=TRUE)
-test=(!train)
+
+train = Hitters %>%
+  sample_frac(0.5)
+
+test = Hitters %>%
+  setdiff(train)
 ```
 
-Now, we apply ${\tt regsubsets()}$ to the training set in order to perform best
+Now, we apply `regsubsets()` to the training set in order to perform best
 subset selection\*.
 
-(\* Note: If you're trying to complete this lab on a machine that can't handle **best subset**, try forward or backward selection instead by adding the ${\tt method = "forward"}$ or ${\tt method = "backward"}$ parameter to your call to ${\tt regsubsets()}$. You'll get slightly different values, but the concepts are the same.)
+( \*Note: If you're trying to complete this lab on a machine that can't handle calculating the **best subset**, or if you just want it to run a little faster, try forward or backward selection instead by adding the `method = "forward"` or `method = "backward"` parameter to your call to `regsubsets()`. You'll get slightly different values, but the concepts are the same.)
 
 ```{r}
-regfit.best.train=regsubsets(Salary~.,data=Hitters [train ,], nvmax = 19)
+regfit_best_train = regsubsets(Salary~., data = train, nvmax = 19)
 ```
 
-Notice that we subset the ${\tt Hitters}$ data frame directly in the call in order
+Notice that we subset the `Hitters` data frame directly in the call in order
 to access only the training subset of the data, using the expression
-${\tt Hitters[train,]}$. We now compute the validation set error for the best
+`Hitters[train,]`. We now compute the validation set error for the best
 model of each model size. We first make a model matrix from the test
 data.
 
 ```{r}
-test.mat=model.matrix (Salary~.,data=Hitters [test ,])
+test_mat = model.matrix (Salary~., data = test)
 ```
 
-The ${\tt model.matrix()}$ function is used in many regression packages for building an $X$ matrix from data. Now we run a loop, and for each size $i$, we
-extract the coefficients from ${\tt regfit.best}$ for the best model of that size,
+The `model.matrix()` function is used in many regression packages for building an $X$ matrix from data. Now we run a loop, and for each size $i$, we
+extract the coefficients from `regfit.best` for the best model of that size,
 multiply them into the appropriate columns of the test model matrix to
 form the predictions, and compute the test MSE.
 
 ```{r}
-val.errors=rep(NA,19)
+val_errors = rep(NA,19)
 
 # Iterates over each size i
 for(i in 1:19){
     
     # Extract the vector of predictors in the best fit model on i predictors
-    coefi=coef(regfit.best.train,id=i)
+    coefi = coef(regfit_best_train, id = i)
     
     # Make predictions using matrix multiplication of the test matirx and the coefficients vector
-    pred=test.mat[,names(coefi)]%*%coefi
+    pred = test_mat[,names(coefi)]%*%coefi
     
     # Calculate the MSE
-    val.errors[i]=mean((Hitters$Salary[test]-pred)^2)
+    val_errors[i] = mean((test$Salary-pred)^2)
 }
 ```
 
@@ -86,41 +90,41 @@ Now let's plot the errors, and find the model that minimizes it:
 
 ```{r}
 # Find the model with the smallest error
-min = which.min(val.errors)
+min = which.min(val_errors)
 
 # Plot the errors for each model size
-plot(val.errors,type='b')
-points(min,val.errors[min][1], col ="red",cex =2, pch =20)
+plot(val_errors, type = 'b')
+points(min, val_errors[min][1], col = "red", cex = 2, pch = 20)
 ```
 
 Viola! We find that the best model (according to the validation set approach) is the one that contains 10 predictors.
 
-This was a little tedious, partly because there is no ${\tt predict()}$ method
-for ${\tt regsubsets()}$. Since we will be using this function again, we can capture
-our steps above and write our own ${\tt predict()}$ method:
+This was a little tedious, partly because there is no `predict()` method
+for `regsubsets()`. Since we will be using this function again, we can capture
+our steps above and write our own `predict()` method:
 
 ```{r}
-predict.regsubsets=function(object,newdata,id,...){
-      form=as.formula(object$call[[2]]) # Extract the formula used when we called regsubsets()
-      mat=model.matrix(form,newdata)    # Build the model matrix
-      coefi=coef(object,id=id)          # Extract the coefficiants of the ith model
-      xvars=names(coefi)                # Pull out the names of the predictors used in the ith model
+predict.regsubsets = function(object,newdata,id,...){
+      form = as.formula(object$call[[2]]) # Extract the formula used when we called regsubsets()
+      mat = model.matrix(form,newdata)    # Build the model matrix
+      coefi = coef(object,id=id)          # Extract the coefficiants of the ith model
+      xvars = names(coefi)                # Pull out the names of the predictors used in the ith model
       mat[,xvars]%*%coefi               # Make predictions using matrix multiplication
 }
 ```
 
 This function pretty much mimics what we did above. The one tricky
-part is how we extracted the formula used in the call to ${\tt regsubsets()}$, but you don't need to worry too much about the mechanisc of this right now. We'll use this function to make our lives a little easier when we do cross-validation.
+part is how we extracted the formula used in the call to `regsubsets()`, but you don't need to worry too much about the mechanisc of this right now. We'll use this function to make our lives a little easier when we do cross-validation.
 
 Now that we know what we're looking for, let's perform best subset selection on the full dataset (up to 10 predictors) and select the best 10-predictor model. It is important that we make use of the *full
 data set* in order to obtain more accurate coefficient estimates. Note that
 we perform best subset selection on the full data set and select the best 10-predictor
 model, rather than simply using the predictors that we obtained
-from the training set, because the best 10-predictor model on the full data
-set may differ from the corresponding model on the training set.
+from the training set, because the best 10-predictor model on the **full data
+set** may differ from the corresponding model on the training set.
 
 ```{r}
-regfit.best=regsubsets(Salary~.,data=Hitters ,nvmax=10)
+regfit_best = regsubsets(Salary~., data = Hitters, nvmax = 10)
 ```
 
 In fact, we see that the best ten-variable model on the full data set has a
@@ -128,8 +132,8 @@ In fact, we see that the best ten-variable model on the full data set has a
 set:
 
 ```{r}
-coef(regfit.best,10)
-coef(regfit.best.train,10)
+coef(regfit_best, 10)
+coef(regfit_best_train, 10)
 ```
 
 # Model selection using Cross-Validation
@@ -137,64 +141,64 @@ coef(regfit.best.train,10)
 Now let's try to choose among the models of different sizes using cross-validation.
 This approach is somewhat involved, as we must perform best
 subset selection\* within each of the $k$ training sets. Despite this, we see that
-with its clever subsetting syntax, ${\tt R}$ makes this job quite easy. First, we
+with its clever subsetting syntax, `R` makes this job quite easy. First, we
 create a vector that assigns each observation to one of $k = 10$ folds, and
 we create a matrix in which we will store the results:
 
 \* or forward selection / backward selection
 
 ```{r}
-k=10        # number of folds
-set.seed(1) # set the random seed so we all get the same results
+k = 10        # number of folds
+set.seed(1)   # set the random seed so we all get the same results
 
 # Assign each observation to a single fold
-folds=sample(1:k,nrow(Hitters ), replace = TRUE)
+folds = sample(1:k, nrow(Hitters), replace = TRUE)
 
 # Create a matrix to store the results of our upcoming calculations
-cv.errors=matrix(NA,k,19, dimnames=list(NULL, paste(1:19)))
+cv_errors = matrix(NA, k, 19, dimnames = list(NULL, paste(1:19)))
 ```
 
 Now let's write a for loop that performs cross-validation. In the $j^{th}$ fold, the
 elements of folds that equal $j$ are in the test set, and the remainder are in
 the training set. We make our predictions for each model size (using our
 new $predict()$ method), compute the test errors on the appropriate subset,
-and store them in the appropriate slot in the matrix ${\tt cv.errors}$.
+and store them in the appropriate slot in the matrix `cv.errors`.
 
 ```{r}
 # Outer loop iterates over all folds
 for(j in 1:k){
     
     # The perform best subset selection on the full dataset, minus the jth fold
-    best.fit=regsubsets(Salary~.,data=Hitters[folds!=j,],nvmax=19)
+    best_fit = regsubsets(Salary~., data = Hitters[folds!=j,], nvmax=19)
     
     # Inner loop iterates over each size i
     for(i in 1:19){
         
         # Predict the values of the current fold from the "best subset" model on i predictors
-        pred=predict(best.fit,Hitters[folds==j,],id=i)
+        pred = predict(best_fit, Hitters[folds==j,], id=i)
         
         # Calculate the MSE, store it in the matrix we created above
-        cv.errors[j,i]=mean((Hitters$Salary[folds==j]-pred)^2)
+        cv_errors[j,i] = mean((Hitters$Salary[folds==j]-pred)^2)
     }
 }
 ```
 
-This has filled up the ${\tt cv.errors}$ matrix such that the $(i,j)^{th}$ element corresponds
+This has filled up the `cv.errors` matrix such that the $(i,j)^{th}$ element corresponds
 to the test MSE for the $i^{th}$ cross-validation fold for the best $j$-variable
-model.  We can then use the ${\tt apply()}$ function to take the ${\tt mean}$ over the columns of this
+model.  We can then use the `apply()` function to take the `mean` over the columns of this
 matrix. This will give us a vector for which the $j^{th}$ element is the cross-validation
 error for the $j$-variable model.
 
 ```{r}
 # Take the mean of over all folds for each model size
-mean.cv.errors = apply(cv.errors, 2, mean)
+mean_cv_errors = apply(cv_errors, 2, mean)
 
 # Find the model size with the smallest cross-validation error
-min = which.min(mean.cv.errors)
+min = which.min(mean_cv_errors)
 
 # Plot the cross-validation error for each model size, highlight the min
-plot(mean.cv.errors,type='b')
-points(min,mean.cv.errors[min][1], col ="red",cex =2, pch =20)
+plot(mean_cv_errors, type='b')
+points(min, mean_cv_errors[min][1], col = "red", cex = 2, pch = 20)
 ```
 
 We see that cross-validation selects an 11-predictor model. Now let's use
@@ -202,8 +206,8 @@ best subset selection on the full data set in order to obtain the 11-predictor
 model.
 
 ```{r}
-reg.best=regsubsets(Salary~.,data=Hitters , nvmax =19)
-coef(reg.best,11)
+reg_best = regsubsets(Salary~., data = Hitters, nvmax = 19)
+coef(reg_best, 11)
 ```
 
 For comparison, let's also take a look at the statistics from last lab:
@@ -211,25 +215,25 @@ For comparison, let's also take a look at the statistics from last lab:
 ```{r}
 par(mfrow=c(2,2))
 
-reg.summary = summary(reg.best)
+reg_summary = summary(reg_best)
 
 # Plot RSS
-plot(reg.summary$rss,xlab="Number of Variables",ylab="RSS", type="l")
+plot(reg_summary$rss, xlab = "Number of Variables", ylab = "RSS", type = "l")
 
 # Plot Adjusted R^2, highlight max value
-plot(reg.summary$adjr2,xlab="Number of Variables", ylab=" Adjusted RSq",type="l")
-max = which.max(reg.summary$adjr2)
-points(max,reg.summary$adjr2[max], col ="red",cex =2, pch =20)
+plot(reg_summary$adjr2, xlab = "Number of Variables", ylab = "Adjusted RSq", type = "l")
+max = which.max(reg_summary$adjr2)
+points(max, reg_summary$adjr2[max], col = "red", cex = 2, pch = 20)
 
 # Plot Cp, highlight min value
-plot(reg.summary$cp,xlab="Number of Variables",ylab="Cp", type="l")
-min = which.min(reg.summary$cp)
-points(min,reg.summary$cp[min],col="red",cex=2,pch=20)
+plot(reg_summary$cp, xlab = "Number of Variables", ylab = "Cp", type = "l")
+min = which.min(reg_summary$cp)
+points(min,reg_summary$cp[min], col = "red", cex = 2, pch = 20)
 
 # Plot BIC, highlight min value
-plot(reg.summary$bic,xlab="Number of Variables",ylab="BIC", type="l")
-min = which.min(reg.summary$bic)
-points(min,reg.summary$bic[min],col="red",cex=2,pch=20)
+plot(reg_summary$bic, xlab = "Number of Variables", ylab = "BIC", type = "l")
+min = which.min(reg_summary$bic)
+points(min, reg_summary$bic[min], col = "red", cex = 2, pch = 20)
 ```
 
 Notice how some of the indicators agree with the cross-validated model, and others are very different?
@@ -238,20 +242,18 @@ Notice how some of the indicators agree with the cross-validated model, and othe
 
 Now it's time to test out these approaches (best / forward / backward selection) and evaluation methods (adjusted training error, validation set, cross validation) on other datasets. You may want to work with a team on this portion of the lab.
 
-You may use any of the datasets included in the ${\tt ISLR}$ package, or choose one from the UCI machine learning repository (http://archive.ics.uci.edu/ml/datasets.html). Download a dataset, and try to determine the optimal set of parameters to use to model it!
+You may use any of the datasets included in the `ISLR` package, or choose one from the UCI machine learning repository (http://archive.ics.uci.edu/ml/datasets.html). Download a dataset, and try to determine the optimal set of parameters to use to model it!
 
 ```{r}
 # Your code here
 ```
 
 To get credit for this lab, please post your answers to the following questions:
- - What dataset did you choose?
- - Which selection techniques did you try?
- - Which evaluation techniques did you try?
- - What did you determine was the best set of parameters to model this data?
- - How well did this model perform?
- 
-to Piazza: https://piazza.com/class/igwiv4w3ctb6rg?cid=35
 
-```{r}
-```
+* What dataset did you choose?
+* Which selection techniques did you try?
+* Which evaluation techniques did you try?
+* What did you determine was the best set of parameters to model this data?
+* How well did this model perform?
+
+to Piazza: https://piazza.com/class/isuhyl9uxya5vm?cid=20
