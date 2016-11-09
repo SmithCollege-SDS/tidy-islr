@@ -249,7 +249,8 @@ and plots just as we did in the case of the polynomial fit_
 preds = predict(fit_step, newdata = list(age = age_grid), se = TRUE)
 
 # Compute error bands (2*SE)
-se_bands = cbind("upper" = preds$fit+2*preds$se.fit, "lower" = preds$fit-2*preds$se.fit)
+se_bands = cbind("upper" = preds$fit+2*preds$se.fit, 
+                 "lower" = preds$fit-2*preds$se.fit)
 
 # Plot
 ggplot() +
@@ -266,5 +267,3 @@ ggplot() +
 To get credit for this lab, post your responses to the following questions:
  - What is one real-world example where you might try polynomial regression?
  - What is one real-world example where you might try using a step function?
- 
-to Piazza: https://piazza.com/class/isuhyl9uxya5vm?cid=32
