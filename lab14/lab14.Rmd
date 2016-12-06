@@ -1,31 +1,30 @@
+```{r, message=FALSE, warning=FALSE, echo=FALSE}
+require(knitr)
+opts_chunk$set(eval=FALSE)
+```
+
 This lab on Decision Trees in R is an abbreviated version of p. 324-331 of "Introduction to Statistical Learning with
-Applications in R" by Gareth James, Daniela Witten, Trevor Hastie and Robert Tibshirani.
+Applications in R" by Gareth James, Daniela Witten, Trevor Hastie and Robert Tibshirani. It was re-implemented in Fall 2016 in `tidyverse` format by Amelia McNamara and R. Jordan Crouser at Smith College.
 
 # 8.3.1 Fitting Classification Trees
 
-The ${\tt tree}$ library is useful for constructing classification and regression trees:
+The `tree` library is useful for constructing classification and regression trees:
 
 ```{r}
 library(tree)
 library(ISLR)
+library(dplyr)
 ```
 
-We'll start by using **classification trees** to analyze the ${\tt Carseats}$ data set. In these
-data, ${\tt Sales}$ is a continuous variable, and so we begin by converting it to a
-binary variable. We use the ${\tt ifelse()}$ function to create a variable, called
-${\tt High}$, which takes on a value of ${\tt Yes}$ if the ${\tt Sales}$ variable exceeds 8, and
-takes on a value of ${\tt No}$ otherwise:
+We'll start by using **classification trees** to analyze the `Carseats` data set. In these
+data, `Sales` is a continuous variable, and so we begin by converting it to a
+binary variable. We use the `ifelse()` function to create a variable, called
+`High`, which takes on a value of `Yes` if the `Sales` variable exceeds 8, and
+takes on a value of `No` otherwise:
 
 ```{r}
-High=ifelse(Carseats$Sales<=8,"No","Yes")
-```
-
-Then we'll use the ${\tt data.frame()}$ function to merge ${\tt High}$ with the rest of
-the ${\tt Carseats}$ data:
-
-```{r}
-Carseats=data.frame(Carseats,High)
-head(Carseats)
+Carseats = Carseats %>%
+  mutate(High = as.factor(ifelse(Sales <= 8, "No", "Yes")))
 ```
 
 In order to properly evaluate the performance of a classification tree on
@@ -34,339 +33,328 @@ the training error. We first split the observations into a training set and a te
 set:
 
 ```{r}
-set.seed(2)
-train=sample(1:nrow(Carseats), 200)
-Carseats.test=Carseats[-train,]
-High.test=High[-train]
+set.seed(1)
+
+train = Carseats %>%
+  sample_n(200)
+
+test = Carseats %>%
+  setdiff(train)
 ```
 
-We now use the ${\tt tree()}$ function to fit a classification tree in order to predict
-${\tt High}$ using all variables but ${\tt Sales}$ (that would be a little silly...). The syntax of the ${\tt tree()}$ function is quite
-similar to that of the ${\tt lm()}$ function:
+We now use the `tree()` function to fit a classification tree in order to predict
+`High` using all variables but `Sales` (that would be a little silly...). The syntax of the `tree()` function is quite
+similar to that of the `lm()` function:
 
 ```{r}
-tree.carseats=tree(High~.-Sales,Carseats,subset=train)
+tree_carseats=tree(High~.-Sales, train)
 ```
 
-The ${\tt summary()}$ function lists the variables that are used as internal nodes (forming decision points)
+The `summary()` function lists the variables that are used as internal nodes (forming decision points)
 in the tree, the number of terminal nodes, and the (training) error rate:
 
 ```{r}
-summary(tree.carseats)
+summary(tree_carseats)
 ```
 
-We see that the training error rate is 10.5%. For classification trees, the ${\tt deviance}$
-reported in the output of ${\tt summary()}$ is given by:
+We see that the training error rate 9%. For classification trees, the `deviance`
+reported in the output of `summary()` is given by:
 
 $$-2\sum_m\sum_k n_{mk}log\hat{p}_{mk}$$
 
 where $n_{mk}$ is the number of observations in the $m^{th}$ terminal node that
-belong to the $k^{th}$ class. A small ${\tt deviance}$ indicates a tree that provides
-a good fit to the (training) data. The ${\tt residual \ mean \ deviance}$ reported is
-simply the ${\tt deviance}$ divided by $n−|T_0|$.
+belong to the $k^{th}$ class. A small `deviance` indicates a tree that provides
+a good fit to the (training) data. The `residual \ mean \ deviance` reported is
+simply the `deviance` divided by $n−|T_0|$.
 
 One of the most attractive properties of trees is that they can be
-graphically displayed. We use the ${\tt plot()}$ function to display the tree structure,
-and the ${\tt text()}$ function to display the node labels. The argument
-${\tt pretty=0}$ instructs ${\tt R}$ to include the category names for any qualitative predictors,
+graphically displayed. We use the `plot()` function to display the tree structure,
+and the `text()` function to display the node labels. The argument
+`pretty = 0` instructs `R` to include the category names for any qualitative predictors,
 rather than simply displaying a letter for each category:
 
 ```{r}
-plot(tree.carseats)
-text(tree.carseats,pretty=0)
+plot(tree_carseats)
+text(tree_carseats, pretty = 0)
 ```
 
-The most important indicator of ${\tt High}$ sales appears to be shelving location,
-since the first branch differentiates ${\tt Good}$ locations from ${\tt Bad}$ and ${\tt Medium}$
+The most important indicator of `High` sales appears to be shelving location,
+since the first branch differentiates `Good` locations from `Bad` and `Medium`
 locations.
 
-If we just type the name of the tree object, ${\tt R}$ prints output corresponding
-to each branch of the tree. ${\tt R}$ displays the split criterion (e.g. ${\tt Price}<142$), the
+If we just type the name of the tree object, `R` prints output corresponding
+to each branch of the tree_ `R` displays the split criterion (e.g. $Price<142$), the
 number of observations in that branch, the deviance, the overall prediction
-for the branch (${\tt Yes}$ or ${\tt No}$), and the fraction of observations in that branch
-that take on values of ${\tt Yes}$ and ${\tt No}$. Branches that lead to terminal nodes are
+for the branch (`Yes` or `No`), and the fraction of observations in that branch
+that take on values of `Yes` and `No`. Branches that lead to terminal nodes are
 indicated using asterisks:
 
 ```{r}
-tree.carseats
+tree_carseats
 ```
 
 Finally, let's evaluate the tree's performance on
-the test data. The ${\tt predict()}$ function can be used for this purpose. In the
-case of a classification tree, the argument ${\tt type="class"}$ instructs ${\tt R}$ to return
+the test data. The `predict()` function can be used for this purpose. In the
+case of a classification tree, the argument `type="class"` instructs `R` to return
 the actual class prediction. This approach leads to correct predictions for
-around 71.5% of the test data set:
+around 77% of the test data set:
 
 ```{r}
-tree.pred=predict(tree.carseats,Carseats.test,type="class")
-table(tree.pred,High.test)
-# (86+57)/200 = 71.5%
+tree_pred = predict(tree_carseats, test, type = "class")
+table(tree_pred, test$High)
+# (98+56)/200 = 77%
 ```
 
 # Pruning
 
 Next, we consider whether **pruning** the tree might lead to improved
-results. The function ${\tt cv.tree()}$ performs cross-validation in order to
+results. The function `cv.tree()` performs cross-validation in order to
 determine the optimal level of tree complexity; cost complexity pruning
 is used in order to select a sequence of trees for consideration. We use
-the argument ${\tt FUN=prune.misclass}$ in order to indicate that we want the
+the argument `FUN = prune.misclass` in order to indicate that we want the
 **classification error rate** as our cost function to guide the cross-validation and pruning process,
-rather than the default for the ${\tt cv.tree()}$ function, which is ${\tt deviance}$. The
-${\tt cv.tree()}$ function reports the number of terminal nodes of each tree considered
+rather than the default for the `cv.tree()` function, which is `deviance`. The
+`cv.tree()` function reports the number of terminal nodes of each tree considered
 (size) as well as the corresponding error rate and the value of the
 cost-complexity parameter used ($k$, which corresponds to $\alpha$ in the equation we saw in lecture).
 
 ```{r}
 set.seed(3)
-cv.carseats=cv.tree(tree.carseats,FUN=prune.misclass)
+cv_carseats = cv.tree(tree_carseats, FUN = prune.misclass)
 ```
 
-Note that, despite the name, the ${\tt dev}$ field corresponds to the **cross-validation error
+Note that, despite the name, the `dev` field corresponds to the **cross-validation error
 rate** in this instance. Let's plot the error
 rate as a function of size:
 
 ```{r}
-plot(cv.carseats$size,cv.carseats$dev,type="b")
+plot(cv_carseats$size, cv_carseats$dev, type = "b")
 ```
 
-We see from this plot that the tree with 9 terminal nodes results in the lowest
-cross-validation error rate, with 50 cross-validation errors. 
+We see from this plot that the tree with 7 terminal nodes results in the lowest
+cross-validation error rate, with 59 cross-validation errors. 
 
-We now apply the ${\tt prune.misclass()}$ function in order to prune the tree to
-obtain the nine-node tree by setting the parameter ${\tt best=9}$:
+We now apply the `prune.misclass()` function in order to prune the tree to
+obtain the nine-node tree by setting the parameter `best = 7`:
 
 ```{r}
-prune.carseats=prune.misclass(tree.carseats,best=9)
-plot(prune.carseats)
-text(prune.carseats,pretty=0)
+prune_carseats = prune.misclass(tree_carseats, best = 7)
+plot(prune_carseats)
+text(prune_carseats, pretty = 0)
 ```
 
 How well does this pruned tree perform on the test data set? Once again,
-we can apply the ${\tt predict()}$ function top find out:
+we can apply the `predict()` function top find out:
 
 ```{r}
-tree.pred=predict(prune.carseats,Carseats.test,type="class")
-table(tree.pred,High.test)
+tree_pred = predict(prune_carseats, test, type = "class")
+table(tree_pred, test$High)
 ```
 
-Now $\frac{(94+60)}{200} =$ 77% of the test observations are correctly classified, so not only has
-the pruning process produced a more interpretable tree, but it has also
-improved the classification accuracy.
-
-If we increase the value of ${\tt best}$, we obtain a larger pruned tree...
-
-```{r}
-prune.carseats=prune.misclass(tree.carseats,best=15)
-plot(prune.carseats)
-text(prune.carseats,pretty=0)
-```
-
-...with lower
-classification accuracy!
-
-```{r}
-tree.pred=predict(prune.carseats,Carseats.test,type="class")
-table(tree.pred,High.test)
-# (86+62)/200 = 74%
-```
+Now $\frac{(96+54)}{200} =$ 75% of the test observations are correctly classified, so 
+the pruning process produced a more interpretable tree, but at a slight cost in classification accuracy.
 
 # 8.3.2 Fitting Regression Trees
 
-Now let's try fitting a **regression tree** to the ${\tt Boston}$ data set from the ${\tt MASS}$ library. First, we create a
-training set, and fit the tree to the training data using ${\tt medv}$ (median home value) as our response:
+Now let's try fitting a **regression tree** to the `Boston` data set from the `MASS` library. First, we create a
+training set, and fit the tree to the training data using `medv` (median home value) as our response:
 
 ```{r}
 library(MASS)
 set.seed(1)
-train = sample(1:nrow(Boston), nrow(Boston)/2)
-tree.boston=tree(medv~.,Boston,subset=train)
-summary(tree.boston)
+boston_train = Boston %>%
+  sample_frac(.5)
+
+boston_test = Boston %>%
+  setdiff(boston_train)
+
+tree_boston=tree(medv~., boston_train)
+
+summary(tree_boston)
 ```
 
-Notice that the output of ${\tt summary()}$ indicates that only three of the variables
-have been used in constructing the tree. In the context of a regression
-tree, the ${\tt deviance}$ is simply the sum of squared errors for the tree. Let's
+Notice that the output of `summary()` indicates that only three of the variables
+have been used in constructing the tree_ In the context of a regression
+tree, the `deviance` is simply the sum of squared errors for the tree_ Let's
 plot the tree:
 
 ```{r}
-plot(tree.boston)
-text(tree.boston,pretty=0)
+plot(tree_boston)
+text(tree_boston, pretty = 0)
 ```
 
-The variable ${\tt lstat}$ measures the percentage of individuals with lower
-socioeconomic status. The tree indicates that lower values of ${\tt lstat}$ correspond
+The variable `lstat` measures the percentage of individuals with lower
+socioeconomic status. The tree indicates that lower values of `lstat` correspond
 to more expensive houses. The tree predicts a median house price
-of \$46,380 for larger homes (${\tt rm}>=7.437$) in suburbs in which residents have high socioeconomic
-status (${\tt lstat}<9.715$).
+of \$46,380 for larger homes ($rm>=7.437$) in suburbs in which residents have high socioeconomic
+status ($lstat<9.715$).
 
-Now we use the ${\tt cv.tree()}$ function to see whether pruning the tree will
+Now we use the `cv.tree()` function to see whether pruning the tree will
 improve performance:
 
 ```{r}
-cv.boston=cv.tree(tree.boston)
-plot(cv.boston$size,cv.boston$dev,type='b')
+cv_boston = cv.tree(tree_boston)
+plot(cv_boston$size, cv_boston$dev, type='b')
 ```
 
 The 7-node tree is selected by cross-validation. We can prune the tree using the
-${\tt prune.tree()}$ function as before:
+`prune.tree()` function as before:
 
 ```{r}
-prune.boston=prune.tree(tree.boston,best=7)
-plot(prune.boston)
-text(prune.boston,pretty=0)
+prune_boston = prune.tree(tree_boston, best = 7)
+plot(prune_boston)
+text(prune_boston, pretty = 0)
 ```
 
 Now we'll use the pruned tree to make predictions on the test set:
 
 ```{r}
-yhat=predict(prune.boston,newdata=Boston[-train,])
-boston.test=Boston[-train,"medv"]
-plot(yhat,boston.test)
+yhat = predict(prune_boston, newdata=boston_train)
+plot(yhat, boston_test$medv)
 abline(0,1)
-mean((yhat-boston.test)^2)
+mean((yhat-boston_test$medv)^2)
 ```
 
 In other words, the test set MSE associated with the regression tree is
-25.72. The square root of the MSE is therefore around 5.07, indicating
-that this model leads to test predictions that are within around \$5,070 of
+154.4729. The square root of the MSE is therefore around 12.428, indicating
+that this model leads to test predictions that are within around \$12,428 of
 the true median home value for the suburb.
     
 # 8.3.3 Bagging and Random Forests
 
 Let's see if we can improve on this result using **bagging** and **random forests**. The exact results obtained in this section may
-depend on the version of ${\tt R}$ and the version of the ${\tt randomForest}$ package
+depend on the version of `R` and the version of the `randomForest` package
 installed on your computer, so don't stress out if you don't match up exactly with the book. Recall that **bagging** is simply a special case of
-a **random forest** with $m = p$. Therefore, the ${\tt randomForest()}$ function can
+a **random forest** with $m = p$. Therefore, the `randomForest()` function can
 be used to perform both random forests and bagging. Let's start with bagging:
 
 ```{r}
 library(randomForest)
 set.seed(1)
-bag.boston=randomForest(medv~.,data=Boston,subset=train,mtry=13,importance=TRUE)
-bag.boston
+bag_boston = randomForest(medv~., data = boston_train, mtry = 13, importance = TRUE)
+bag_boston
 ```
 
-The argument ${\tt mtry=13}$ indicates that all 13 predictors should be considered
+The argument `mtry = 13` indicates that all 13 predictors should be considered
 for each split of the tree -- in other words, that bagging should be done. How
 well does this bagged model perform on the test set?
 
 ```{r}
-yhat.bag = predict(bag.boston,newdata=Boston[-train,])
-plot(yhat.bag, boston.test)
+yhat_bag = predict(bag_boston, newdata = boston_test)
+plot(yhat_bag, boston_test$medv)
 abline(0,1)
-mean((yhat.bag-boston.test)^2)
+mean((yhat_bag-boston_test$medv)^2)
 ```
 
-The test setMSE associated with the bagged regression tree is just over
-half that obtained using an optimally-pruned single tree! We can change
-the number of trees grown by ${\tt randomForest()}$ using the ${\tt ntree}$ argument:
+The test set MSE associated with the bagged regression tree is dramatically smaller than that obtained using an optimally-pruned single tree! We can change
+the number of trees grown by `randomForest()` using the `ntree` argument:
 
 ```{r}
-bag.boston=randomForest(medv~.,data=Boston,subset=train,mtry=13,ntree=25)
-yhat.bag = predict(bag.boston,newdata=Boston[-train,])
-mean((yhat.bag-boston.test)^2)
+bag_boston2 = randomForest(medv~., data =  boston_train, mtry = 13, ntree = 25)
+yhat_bag2 = predict(bag_boston2, newdata = boston_test)
+mean((yhat_bag2-boston_test$medv)^2)
 ```
 
 We can grow a random forest in exactly the same way, except that
-we'll use a smaller value of the ${\tt mtry}$ argument. By default, ${\tt randomForest()}$
+we'll use a smaller value of the `mtry` argument. By default, `randomForest()`
 uses $p/3$ variables when building a random forest of regression trees, and
-$\sqrt{p}$ variables when building a random forest of classification trees. Here we'll
-use ${\tt mtry = 6}$:
+$\sqrt{p` variables when building a random forest of classification trees. Here we'll
+use `mtry = 6`:
 
 ```{r}
 set.seed(1)
-rf.boston=randomForest(medv~.,data=Boston,subset=train,mtry=6,importance=TRUE)
-yhat.rf = predict(rf.boston,newdata=Boston[-train,])
-mean((yhat.rf-boston.test)^2)
+rf_boston = randomForest(medv~., data = boston_train, mtry = 6, importance = TRUE)
+yhat_rf = predict(rf_boston, newdata = boston_test)
+mean((yhat_rf-boston_test$medv)^2)
 ```
 
 The test set MSE is even lower; this indicates that random forests yielded an
 improvement over bagging in this case.
 
-Using the ${\tt importance()}$ function, we can view the importance of each
+Using the `importance()` function, we can view the importance of each
 variable:
 
 ```{r}
-importance(rf.boston)
+importance(rf_boston)
 ```
 
 Two measures of variable importance are reported. The former is based
 upon the **mean decrease of accuracy in predictions** on the out-of-bag samples
 when a given variable is excluded from the model. The latter is a measure
 of the **total decrease in node impurity** that results from splits over that
-variable, averaged over all tree. In the
+variable, averaged over all tree_ In the
 case of regression trees, the node impurity is measured by the training
 RSS, and for classification trees by the deviance. Plots of these importance
-measures can be produced using the ${\tt varImpPlot()}$ function:
+measures can be produced using the `varImpPlot()` function:
 
 ```{r}
-varImpPlot(rf.boston)
+varImpPlot(rf_boston)
 ```
 
 The results indicate that across all of the trees considered in the random
-forest, the wealth level of the community (${\tt lstat}$) and the house size (${\tt rm}$)
+forest, the wealth level of the community (`lstat`) and the house size (`rm`)
 are by far the two most important variables.
 
 # 8.3.4 Boosting
 
-Now we'll use the ${\tt gbm}$ package, and within it the ${\tt gbm()}$ function, to fit **boosted
-regression trees** to the ${\tt Boston}$ data set. We run ${\tt gbm()}$ with the option
-${\tt distribution="gaussian"}$ since this is a regression problem; if it were a binary
-classification problem, we would use ${\tt distribution="bernoulli"}$. The
-argument ${\tt n.trees=5000}$ indicates that we want 5000 trees, and the option
-${\tt interaction.depth=4}$ limits the depth of each tree:
+Now we'll use the `gbm` package, and within it the `gbm()` function, to fit **boosted
+regression trees** to the `Boston` data set. We run `gbm()` with the option
+`distribution="gaussian"` since this is a regression problem; if it were a binary
+classification problem, we would use `distribution="bernoulli"`. The
+argument `n.trees=5000` indicates that we want 5000 trees, and the option
+`interaction.depth=4` limits the depth of each tree:
 
 ```{r}
 library(gbm)
 set.seed(1)
-boost.boston=gbm(medv~.,data=Boston[train,],distribution="gaussian",n.trees=5000,interaction.depth=4)
+boost_boston = gbm(medv~., data = boston_train, distribution = "gaussian", n.trees = 5000, interaction.depth = 4)
 ```
 
-The ${\tt summary()}$ function produces a relative influence plot and also outputs
+The `summary()` function produces a relative influence plot and also outputs
 the relative influence statistics:
 
 ```{r}
-summary(boost.boston)
+summary(boost_boston)
 ```
 
-We see that ${\tt lstat}$ and ${\tt rm}$ are again the most important variables by far. We can
+We see that `lstat` and `rm` are again the most important variables by far. We can
 also produce partial dependence plots for these two variables. These plots
 illustrate the marginal effect of the selected variables on the response after
 integrating out the other variables. In this case, as we might expect, median
-house prices are increasing with ${\tt rm}$ and decreasing with ${\tt lstat}$:
+house prices are increasing with `rm` and decreasing with `lstat`:
 
 ```{r}
 par(mfrow=c(1,2))
-plot(boost.boston,i="rm")
-plot(boost.boston,i="lstat")
+plot(boost_boston,i="rm")
+plot(boost_boston,i="lstat")
 ```
 
-Now let's use the boosted model to predict ${\tt medv}$ on the test set:
+Now let's use the boosted model to predict `medv` on the test set:
 
 ```{r}
-yhat.boost=predict(boost.boston, newdata=Boston[-train,], n.trees=5000)
-mean((yhat.boost-boston.test)^2)
+yhat_boost = predict(boost_boston, newdata = boston_test, n.trees = 5000)
+mean((yhat_boost-boston_test$medv)^2)
 ```
 
 The test MSE obtained is similar to the test MSE for random forests
-and superior to that for bagging. If we want to, we can perform boosting
+and bagging. If we want to, we can perform boosting
 with a different value of the shrinkage parameter $\lambda$. The default
-value is 0.001, but this is easily modified. Here we take $\lambda = 0.2$:
+value is 0.001, but this is easily modified. Here we take $\lambda = 0.1$:
 
 ```{r}
-boost.boston=gbm(medv~., data=Boston[train,], distribution="gaussian", n.trees=5000, interaction.depth=4, shrinkage=0.2, verbose=F)
-yhat.boost=predict(boost.boston, newdata=Boston[-train,], n.trees=5000)
-mean((yhat.boost-boston.test)^2)
+boost_boston2 = gbm(medv~., data = boston_train, distribution = "gaussian", n.trees = 5000, interaction.depth = 4, shrinkage = 0.01, verbose = F)
+yhat_boost2 = predict(boost_boston2, newdata = boston_test, n.trees = 5000)
+mean((yhat_boost2-boston_test$medv)^2)
 ```
 
-In this case, using $\lambda = 0.2$ leads to a slightly lower test MSE than $\lambda = 0.001$.
+In this case, using $\lambda = 0.1$ leads to a slightly lower test MSE than $\lambda = 0.001$.
 
 To get credit for this lab, post your responses to the following questions:
  - What's one real-world scenario where you might try using Bagging?
  - What's one real-world scenario where you might try using Random Forests?
  - What's one real-world scenario where you might try using Boosting?
  
-to Piazza: https://piazza.com/class/igwiv4w3ctb6rg?cid=53
+to Piazza: https://piazza.com/class/isuhyl9uxya5vm?cid=37
 
 ```{r}
 ```
