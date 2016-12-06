@@ -80,7 +80,7 @@ fit2 = lm(wage~ns(age, df = 4), data = Wage)
 pred2 = predict(fit2, newdata = list(age = age_grid), se = TRUE)
 
 # Compute error bands (2*SE)
-se_bands = with(pred, cbind("upper" = fit+2*se.fit, 
+se_bands2 = with(pred, cbind("upper" = fit+2*se.fit, 
                             "lower" = fit-2*se.fit))
 
 # Plot the natural spline and error bands
